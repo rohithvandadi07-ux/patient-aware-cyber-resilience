@@ -72,3 +72,13 @@ class IncidentStatus(StrEnum):
     RESOLVED = "resolved"
     REOPENED = "reopened"
     INVESTIGATION_STALLED = "investigation_stalled"
+    # Per-stage stall statuses (architecture spec Section 11: "marks the
+    # incident `investigation_stalled` (or the equivalent per stage)").
+    # INVESTIGATION_STALLED above predates Phase 4 and covers the
+    # Investigation Agent specifically; these four cover the other four
+    # agents so a dashboard/test can tell *which* stage actually stalled
+    # instead of collapsing every agent failure into one status.
+    THREAT_REASONING_STALLED = "threat_reasoning_stalled"
+    CONTEXT_STALLED = "context_stalled"
+    RESPONSE_PLANNING_STALLED = "response_planning_stalled"
+    RECOVERY_VERIFICATION_STALLED = "recovery_verification_stalled"
