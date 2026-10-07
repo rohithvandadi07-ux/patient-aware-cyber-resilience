@@ -1,0 +1,74 @@
+"""Shared enumerations used across schemas.
+
+Centralized here so every layer (detection, agents, risk engine, policy engine)
+refers to the same vocabulary instead of each defining its own string literals.
+"""
+
+from enum import StrEnum
+
+
+class DeviceCriticality(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ImpactLevel(StrEnum):
+    """Used for both clinical impact and response impact — same scale, so a
+    RiskScore's per-action response_impact is directly comparable to a
+    ClinicalContext's clinical_impact_level."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class AttackCategory(StrEnum):
+    """Scope matches architecture spec Section 10 — narrowed to what the selected
+    datasets (CICIoMT2024, WUSTL-EHMS-2020) actually label with adequate samples.
+    Not the full brief candidate list; extend only when a specific dataset or
+    scenario justifies it."""
+
+    DOS = "dos"
+    DDOS = "ddos"
+    RECONNAISSANCE = "reconnaissance"
+    MQTT_BASED = "mqtt_based"
+    SPOOFING = "spoofing"
+    MITM_INJECTION = "mitm_injection"
+    UNKNOWN = "unknown"
+
+
+class ResponseActionCategory(StrEnum):
+    """Matches the Policy Engine's rule table categories (architecture spec
+    Section 13) — the category, not the specific action, is what policy rules key
+    off of."""
+
+    BLOCK_TRAFFIC = "block_traffic"
+    REVOKE_SESSION = "revoke_session"
+    ROTATE_CREDENTIALS = "rotate_credentials"
+    RESTRICT_COMMUNICATION = "restrict_communication"
+    ISOLATE_NON_CRITICAL = "isolate_non_critical"
+    ISOLATE_CRITICAL = "isolate_critical"
+    QUARANTINE_SEGMENT = "quarantine_segment"
+    ACTIVATE_BACKUP = "activate_backup"
+    RESTART_SERVICE = "restart_service"
+    FAILOVER = "failover"
+    SHUTDOWN = "shutdown"
+
+
+class ApprovalDecision(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class IncidentStatus(StrEnum):
+    DETECTED = "detected"
+    INVESTIGATING = "investigating"
+    RISK_ASSESSED = "risk_assessed"
+    AWAITING_APPROVAL = "awaiting_approval"
+    RESPONSE_EXECUTING = "response_executing"
+    RECOVERY_VERIFYING = "recovery_verifying"
+    RESOLVED = "resolved"
+    REOPENED = "reopened"
+    INVESTIGATION_STALLED = "investigation_stalled"

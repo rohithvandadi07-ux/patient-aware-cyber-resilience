@@ -1,0 +1,49 @@
+# --- Secrets ---
+.env
+*.key
+*.pem
+*.p12
+*.crt
+# Fabric sample test-network certs (Phase 8+) are not secrets, but reconsider this exception then:
+!blockchain/network/**/*.crt
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+build/
+.vite/
+
+# --- Datasets & model artifacts ---
+datasets/**/*.csv
+datasets/**/*.pcap
+datasets/raw/
+experiments/models/*.pkl
+experiments/models/*.joblib
+experiments/models/*.pt
+experiments/models/*.onnx
+
+# --- Docker / infra ---
+*.log
+
+# --- Blockchain generated material ---
+blockchain/network/organizations/
+blockchain/network/channel-artifacts/
+blockchain/network/wallet/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
