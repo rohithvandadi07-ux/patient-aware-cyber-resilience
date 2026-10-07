@@ -4,3 +4,12 @@ pydantic==2.10.4
 pydantic-settings==2.7.1
 asyncpg==0.30.0
 sqlalchemy==2.0.36
+
+# --- Cybersecurity detection engine (Phase 3) ---
+# Baselines per architecture spec Section 10: Random Forest / XGBoost before any
+# deep-learning model is considered.
+scikit-learn==1.6.0
+xgboost==2.1.3
+pandas==2.2.3
+numpy==2.2.1
+joblib==1.4.2
