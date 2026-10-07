@@ -4,3 +4,8 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI's Depends(...) in a parameter default is the documented, intended
+# pattern (not the mutable-default-argument bug this rule targets elsewhere) —
+# disabled project-wide rather than silenced per line, since every router will
+# use it.
+ignore = ["B008"]

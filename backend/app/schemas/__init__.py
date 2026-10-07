@@ -30,10 +30,12 @@ from app.schemas.enums import (
     IncidentStatus,
     ResponseActionCategory,
 )
+from app.schemas.events import NetworkEvent
 from app.schemas.incident import Incident
 from app.schemas.policy import PolicyDecision
 from app.schemas.response import ApprovalRecord, ExecutedResponse
 from app.schemas.risk import RiskScore
+from app.schemas.telemetry import TelemetryReading
 
 __all__ = [
     "ApprovalDecision",
@@ -53,6 +55,7 @@ __all__ = [
     "IncidentProvenance",
     "IncidentStatus",
     "InvestigationReport",
+    "NetworkEvent",
     "OperationalState",
     "PolicyDecision",
     "ProposedResponse",
@@ -61,5 +64,6 @@ __all__ = [
     "ResponseActionCategory",
     "ResponseProvenance",
     "RiskScore",
+    "TelemetryReading",
     "ThreatAssessment",
 ]

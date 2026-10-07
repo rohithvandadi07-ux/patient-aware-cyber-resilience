@@ -33,19 +33,34 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         debug=settings.debug,
     )
 
+    _register_state(app)
     _register_routers(app)
 
     return app
 
 
+def _register_state(app: FastAPI) -> None:
+    """Initialize app-wide, in-process state.
+
+    Phase 2 introduces the first such state: an in-memory device registry
+    seeded with the default smart-hospital fleet. This is intentionally simple
+    (no database yet) — Phase 9 is where device state moves to persistent
+    storage behind a repository, per the architecture spec's storage strategy.
+    """
+    from app.iomt_simulator.hospital import build_default_fleet
+
+    app.state.device_registry = build_default_fleet()
+
+
 def _register_routers(app: FastAPI) -> None:
     """Register all API routers.
 
-    Phase 1 registers only the health router. Each later phase (simulator,
-    detection, agents, risk engine, etc.) adds its router here as it's built —
-    this function is the single place that has to change to wire in a new
-    resource.
+    Phase 1 registered only the health router. Each later phase (detection,
+    agents, risk engine, etc.) adds its router here as it's built — this
+    function is the single place that has to change to wire in a new resource.
     """
+    from app.api.devices import router as devices_router
     from app.api.health import router as health_router
 
     app.include_router(health_router)
+    app.include_router(devices_router)
