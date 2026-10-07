@@ -59,8 +59,10 @@ def _register_routers(app: FastAPI) -> None:
     agents, risk engine, etc.) adds its router here as it's built — this
     function is the single place that has to change to wire in a new resource.
     """
+    from app.api.detections import router as detections_router
     from app.api.devices import router as devices_router
     from app.api.health import router as health_router
 
     app.include_router(health_router)
     app.include_router(devices_router)
+    app.include_router(detections_router)
