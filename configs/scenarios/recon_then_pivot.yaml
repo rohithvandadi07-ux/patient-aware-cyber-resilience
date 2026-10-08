@@ -1,0 +1,192 @@
+scenario_id: recon_then_pivot
+description: 'Multi-stage intrusion: reconnaissance scanning, credential brute force
+  against a workstation, then a pivot to an ICU infusion pump. Tests incident correlation
+  across devices and the escalation of clinical risk as the attack moves from admin
+  to clinical VLAN.'
+seed: 20260106
+tick_seconds: 1.0
+total_ticks: 420
+start_time: '2026-01-01T08:00:00Z'
+devices:
+- device_id: VENT-ICU-01
+  device_type: ventilator
+  model_name: SimVent-900
+  ward: ICU-1
+  criticality: life_sustaining
+  life_support_relevant: true
+  has_redundant_peer: false
+  supports_safe_failover: false
+  acceptable_interruption_seconds: 0.0
+  network_segment: vlan-clinical
+  ip_address: 10.0.1.11
+  mac_address: 02:1a:11:00:00:11
+  firmware_version: 4.2.1
+  patient:
+    patient_ref: SYN-PT-0001
+    acuity: critical
+    dependency: life_critical
+    on_life_support: true
+    clinician_present: true
+    tolerable_interruption_minutes: 0.0
+- device_id: VENT-ICU-02
+  device_type: ventilator
+  model_name: SimVent-900
+  ward: ICU-1
+  criticality: life_sustaining
+  life_support_relevant: true
+  has_redundant_peer: true
+  redundant_peer_id: VENT-ICU-03
+  supports_safe_failover: true
+  acceptable_interruption_seconds: 15.0
+  network_segment: vlan-clinical
+  ip_address: 10.0.1.12
+  mac_address: 02:1a:11:00:00:12
+  firmware_version: 4.2.1
+  patient:
+    patient_ref: SYN-PT-0002
+    acuity: serious
+    dependency: life_critical
+    on_life_support: true
+    clinician_present: true
+    tolerable_interruption_minutes: 0.5
+- device_id: VENT-ICU-03
+  device_type: ventilator
+  model_name: SimVent-900
+  ward: ICU-1
+  criticality: life_sustaining
+  life_support_relevant: true
+  has_redundant_peer: true
+  redundant_peer_id: VENT-ICU-02
+  supports_safe_failover: true
+  acceptable_interruption_seconds: 15.0
+  network_segment: vlan-clinical
+  ip_address: 10.0.1.13
+  mac_address: 02:1a:11:00:00:13
+  firmware_version: 4.2.1
+- device_id: PUMP-ICU-01
+  device_type: infusion_pump
+  model_name: SimPump-ML
+  ward: ICU-1
+  criticality: life_supporting
+  life_support_relevant: true
+  has_redundant_peer: false
+  supports_safe_failover: false
+  acceptable_interruption_seconds: 60.0
+  network_segment: vlan-clinical
+  ip_address: 10.0.1.21
+  mac_address: 02:1a:11:00:00:21
+  firmware_version: 2.7.0
+  patient:
+    patient_ref: SYN-PT-0003
+    acuity: serious
+    dependency: continuous
+    on_life_support: false
+    clinician_present: true
+    tolerable_interruption_minutes: 2.0
+- device_id: PUMP-WARD-02
+  device_type: infusion_pump
+  model_name: SimPump-ML
+  ward: WARD-3
+  criticality: clinically_significant
+  life_support_relevant: false
+  has_redundant_peer: false
+  supports_safe_failover: false
+  acceptable_interruption_seconds: 600.0
+  network_segment: vlan-clinical
+  ip_address: 10.0.1.22
+  mac_address: 02:1a:11:00:00:22
+  firmware_version: 2.7.0
+  patient:
+    patient_ref: SYN-PT-0004
+    acuity: stable
+    dependency: intermittent
+    on_life_support: false
+    clinician_present: true
+    tolerable_interruption_minutes: 30.0
+- device_id: ECG-ICU-01
+  device_type: ecg_monitor
+  model_name: SimMonitor-5
+  ward: ICU-1
+  criticality: clinically_significant
+  life_support_relevant: false
+  has_redundant_peer: false
+  supports_safe_failover: false
+  acceptable_interruption_seconds: 120.0
+  network_segment: vlan-clinical
+  ip_address: 10.0.1.31
+  mac_address: 02:1a:11:00:00:31
+  firmware_version: 3.1.4
+  patient:
+    patient_ref: SYN-PT-0001
+    acuity: critical
+    dependency: continuous
+    on_life_support: false
+    clinician_present: true
+    tolerable_interruption_minutes: 5.0
+- device_id: WS-NURSE-01
+  device_type: workstation
+  model_name: SimWorkstation
+  ward: ICU-1
+  criticality: non_clinical
+  life_support_relevant: false
+  has_redundant_peer: false
+  supports_safe_failover: false
+  acceptable_interruption_seconds: 3600.0
+  network_segment: vlan-admin
+  ip_address: 10.0.10.44
+  mac_address: 02:1a:11:00:00:44
+  firmware_version: win-11-23h2
+- device_id: GW-ICU-01
+  device_type: network_gateway
+  model_name: SimGateway
+  ward: ICU-1
+  criticality: supportive
+  life_support_relevant: false
+  has_redundant_peer: false
+  supports_safe_failover: false
+  acceptable_interruption_seconds: 90.0
+  network_segment: vlan-infra
+  ip_address: 10.0.0.1
+  mac_address: 02:1a:11:00:00:01
+  firmware_version: 1.9.2
+attacks:
+- attack_type: port_scan
+  target_device_id: GW-ICU-01
+  start_tick: 30
+  duration_ticks: 25
+  intensity: 1.0
+  source_ip: 203.0.113.99
+  source_mac: de:ad:be:ef:00:01
+  params: {}
+  label: external reconnaissance
+- attack_type: credential_brute_force
+  target_device_id: WS-NURSE-01
+  start_tick: 70
+  duration_ticks: 35
+  intensity: 1.0
+  source_ip: 203.0.113.99
+  source_mac: de:ad:be:ef:00:01
+  params: {}
+  label: initial access
+- attack_type: reconnaissance
+  target_device_id: ECG-ICU-01
+  start_tick: 130
+  duration_ticks: 30
+  intensity: 1.0
+  source_ip: 10.0.10.44
+  source_mac: de:ad:be:ef:00:01
+  params: {}
+  label: internal discovery from foothold
+- attack_type: malicious_command
+  target_device_id: PUMP-WARD-02
+  start_tick: 180
+  duration_ticks: 120
+  intensity: 1.0
+  source_ip: 10.0.10.44
+  source_mac: de:ad:be:ef:00:01
+  params:
+    target_rate_ml_h: 95.0
+  label: pivot to clinical device
+expectations:
+  multi_device_correlation: true
+  escalating_clinical_risk: true
