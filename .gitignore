@@ -1,46 +1,92 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Environment / secrets
+# ---- Secrets / environment ----
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+!**/ca-cert-public.crt
+secrets/
+credentials/
 
-# IDE
-.vscode/
-.idea/
+# ---- Hyperledger Fabric crypto material ----
+blockchain/fabric/network/crypto-config/
+blockchain/fabric/network/organizations/
+blockchain/fabric/network/channel-artifacts/
+blockchain/fabric/wallet/
+*.block
+*.tx
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Build / packaging
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
 build/
 dist/
-*.egg-info/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Test / coverage
+.venv/
+venv/
+env/
+.tox/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
-htmlcov/
 coverage.xml
+htmlcov/
 
-# Logs
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ---- Data: raw/large artifacts never committed ----
+datasets/raw/*
+!datasets/raw/.gitkeep
+!datasets/raw/README.md
+datasets/processed/*
+!datasets/processed/.gitkeep
+*.csv
+*.parquet
+*.pcap
+*.pcapng
+*.h5
+*.hdf5
+*.npz
+!tests/**/fixtures/*.csv
+!evaluation/**/expected/*.csv
+
+# ---- Model artifacts ----
+artifacts/
+models_store/
+*.joblib
+*.pkl
+*.pt
+*.onnx
+
+# ---- Experiment outputs ----
+experiments/results/*
+!experiments/results/.gitkeep
+runs/
+mlruns/
 *.log
 
-# Local data / generated artifacts
-data/
-*.sqlite
+# ---- Local databases ----
 *.db
+*.sqlite
+*.sqlite3
+data/local/
+
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

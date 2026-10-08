@@ -574,6 +574,10 @@ class Incident(DomainModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     severity: Severity = Severity.INFO
     detection: DetectionResult | None = None
+    #: Compact record of every detection correlated into this incident, used
+    #: to recompute headline attribution by evidence weight rather than
+    #: arrival order. See IncidentService._attribute.
+    observations: list[dict[str, Any]] = Field(default_factory=list)
     evidence: list[EvidenceRef] = Field(default_factory=list)
     timeline: list[IncidentTimelineEntry] = Field(default_factory=list)
     agent_runs: list[AgentRunRecord] = Field(default_factory=list)

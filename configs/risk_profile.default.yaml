@@ -1,0 +1,477 @@
+# =============================================================================
+#  Patient-Aware Dual-Risk Engine - default parameter profile
+# =============================================================================
+#
+#  Every number in this file is a PARAMETER, not a finding. The conceptual
+#  starting point from the specification is:
+#
+#      DecisionRisk = f(CyberRisk, ClinicalCriticality, ResponseImpact)
+#
+#  This file is one defensible instantiation of f. It is versioned, swept in
+#  the sensitivity analysis (experiments/configs/sensitivity.yaml), and
+#  ablated component-by-component. The paper reports how conclusions move
+#  across this space rather than asserting these values are correct.
+#
+#  Design rule: weights within each block sum to 1.0, so a score is a convex
+#  combination of normalised factors and therefore lands in [0, 1] by
+#  construction. This is what makes the scores comparable across devices and
+#  interpretable as a fraction of worst-case.
+# =============================================================================
+
+formulation_version: "v1"
+description: >
+  Default patient-aware risk formulation. Additive weighted model with
+  explicit hard constraints. Chosen as the baseline because it is
+  auditable, every term is separately ablatable, and a clinician can be
+  shown exactly which factor drove a decision.
+
+# -----------------------------------------------------------------------------
+# 1. CYBER RISK
+# -----------------------------------------------------------------------------
+# Answers: "how dangerous is this attack, as an attack?"
+# Deliberately asset-agnostic. Device importance belongs to clinical risk;
+# mixing it in here would make the two terms correlated and the ablation
+# meaningless.
+cyber_risk:
+  weights:
+    attack_severity: 0.30      # severity of the attack class
+    detection_confidence: 0.20 # how sure the detector is
+    anomaly_magnitude: 0.12    # how far from baseline
+    propagation_potential: 0.18 # can it spread?
+    persistence: 0.12          # does it survive a naive response?
+    exploit_maturity: 0.08     # how established is this technique
+
+  # Severity of each attack class, in [0, 1]. Ordering is the defensible
+  # part; exact values are swept.
+  attack_severity:
+    none: 0.00
+    reconnaissance: 0.25
+    port_scan: 0.25
+    arp_spoofing: 0.50
+    dos: 0.55
+    ddos: 0.70
+    mitm: 0.72
+    credential_brute_force: 0.55
+    unauthorized_access: 0.75
+    spoofed_telemetry: 0.80
+    malicious_command: 0.95
+    firmware_tamper: 0.95
+    ransomware_behaviour: 0.90
+    unknown: 0.50
+
+  # Can the attack move laterally from this asset class?
+  propagation_potential:
+    none: 0.00
+    reconnaissance: 0.60      # precursor to lateral movement
+    port_scan: 0.60
+    arp_spoofing: 0.75        # enables MITM against other hosts
+    mitm: 0.70
+    dos: 0.20                 # loud, localised
+    ddos: 0.25
+    credential_brute_force: 0.65
+    unauthorized_access: 0.80
+    spoofed_telemetry: 0.30
+    malicious_command: 0.35
+    firmware_tamper: 0.85     # persistent foothold
+    ransomware_behaviour: 0.90
+    unknown: 0.50
+
+  # Does the attack survive a traffic-level response? This is what makes
+  # mandated scenario 3 (recovery failure) principled rather than scripted:
+  # a session-based attack is not cleared by blocking traffic.
+  persistence:
+    none: 0.00
+    reconnaissance: 0.15
+    port_scan: 0.15
+    arp_spoofing: 0.35
+    mitm: 0.45
+    dos: 0.10
+    ddos: 0.10
+    credential_brute_force: 0.40
+    unauthorized_access: 0.85   # valid session survives traffic blocking
+    spoofed_telemetry: 0.60
+    malicious_command: 0.80
+    firmware_tamper: 0.95
+    ransomware_behaviour: 0.70
+    unknown: 0.50
+
+  exploit_maturity:
+    none: 0.00
+    reconnaissance: 0.90
+    port_scan: 0.95
+    arp_spoofing: 0.90
+    mitm: 0.80
+    dos: 0.95
+    ddos: 0.90
+    credential_brute_force: 0.95
+    unauthorized_access: 0.85
+    spoofed_telemetry: 0.55
+    malicious_command: 0.60
+    firmware_tamper: 0.40
+    ransomware_behaviour: 0.85
+    unknown: 0.50
+
+  # Anomaly score is unbounded above; squash it into [0,1]. The scale is the
+  # score at which the term reaches ~0.5.
+  anomaly_normalisation:
+    scale: 0.6
+    method: saturating   # x / (x + scale)
+
+  # Uncertainty sources, combined and reported alongside the score so the
+  # policy engine can be more conservative when the evidence is thin.
+  uncertainty:
+    low_confidence_weight: 0.5     # detector unsure
+    unknown_attack_weight: 0.3     # attack type not identified
+    sparse_evidence_weight: 0.2    # few corroborating events
+    sparse_evidence_threshold: 3   # evidence items below which it is sparse
+
+# -----------------------------------------------------------------------------
+# 2. CLINICAL RISK
+# -----------------------------------------------------------------------------
+# Answers: "how much does the patient depend on this device, right now?"
+# This is the term no public IoMT dataset contains, and the reason the
+# closed-loop evaluation needs the simulator.
+clinical_risk:
+  weights:
+    device_criticality: 0.28
+    patient_dependency: 0.26
+    life_support: 0.18
+    operational_state: 0.10
+    redundancy_deficit: 0.10
+    interruption_intolerance: 0.08
+
+  # Clinical criticality tier of the device class.
+  device_criticality:
+    life_sustaining: 1.00         # interruption may be immediately fatal
+    life_supporting: 0.78         # rapid deterioration
+    clinically_significant: 0.50  # degraded care, tolerable
+    supportive: 0.25
+    non_clinical: 0.02
+
+  # How dependent the attached synthetic patient is.
+  patient_dependency:
+    life_critical: 1.00
+    continuous: 0.70
+    intermittent: 0.35
+    none: 0.00
+
+  # Patient acuity modifies dependency: the same device matters more to a
+  # critically ill patient. Multiplicative, bounded.
+  acuity_multiplier:
+    critical: 1.00
+    serious: 0.88
+    guarded: 0.75
+    stable: 0.60
+    none: 0.40
+
+  # Device operational state: an already-degraded device has less headroom.
+  operational_state:
+    fault: 1.00
+    alarm: 0.80
+    degraded: 0.70
+    quarantined: 0.55
+    isolated: 0.60
+    offline: 0.90          # already not delivering care
+    standby: 0.30
+    maintenance: 0.15
+    active: 0.35
+  # Note: 'active' is nonzero because a device actively delivering therapy
+  # has more to lose from interruption than one in standby.
+
+  # Redundancy deficit: 1.0 when no safe alternative exists.
+  redundancy:
+    no_peer: 1.00
+    peer_without_safe_failover: 0.55
+    peer_with_safe_failover: 0.15
+
+  # Tolerable interruption, in minutes, mapped to intolerance in [0,1].
+  interruption_intolerance:
+    zero_tolerance_minutes: 0.0   # <= this -> intolerance 1.0
+    full_tolerance_minutes: 60.0  # >= this -> intolerance 0.0
+
+  # Hard clinical constraints. These are NOT weights: they are floors the
+  # weighted sum cannot fall below. Without them, a sufficiently low weighted
+  # sum could permit an unsafe action on a life-support device, which is the
+  # exact failure mode this project exists to prevent.
+  floors:
+    life_support_active: 0.80        # life support + therapy in progress
+    life_critical_dependency: 0.75   # patient life-critically dependent
+    no_clinician_present: 0.05       # additive bump, not a floor
+
+# -----------------------------------------------------------------------------
+# 3. RESPONSE IMPACT
+# -----------------------------------------------------------------------------
+# Answers: "what would THIS response cost, clinically?"
+# The term that distinguishes this work: prior IoMT IDS work that acts at all
+# does not weigh the cost of its own action.
+response_impact:
+  weights:
+    security_benefit: 0.40
+    clinical_cost: 0.40
+    reversibility: 0.10
+    duration: 0.10
+
+  # Baseline security benefit of each action, in [0,1]. This is the
+  # CONTAINMENT CEILING: how much an action can achieve when it does address
+  # the attack mechanism.
+  security_benefit:
+    monitor_only: 0.05
+    escalate_to_clinical_staff: 0.10
+    block_source_traffic: 0.70
+    rate_limit_traffic: 0.50
+    revoke_session: 0.80
+    rotate_credentials: 0.85
+    restrict_communication: 0.60
+    quarantine_device: 0.85
+    isolate_network_segment: 0.92
+    activate_backup_path: 0.35
+    failover_to_redundant_device: 0.70
+    restart_device_service: 0.50
+    shutdown_device: 0.98
+
+  # MECHANISM EFFECTIVENESS - multiplier in [0,1] on the baseline above,
+  # per (attack, action) pair.
+  #
+  # WHY THIS EXISTS: with a fixed security-benefit table the engine selected
+  # the SAME action (rotate_credentials) for a ransomware-infected
+  # workstation and a command-injected ventilator, because that action had
+  # the best fixed benefit-to-cost ratio in every case. That is wrong on the
+  # facts: rotating credentials does nothing to a volumetric flood, and
+  # blocking traffic does nothing to an attacker holding a valid session.
+  # An action's security value depends on whether it severs the mechanism
+  # the attack is actually using.
+  #
+  # Structure: `default` applies to any action not listed for that attack.
+  # Values are multipliers, so 0.1 means "barely touches this attack".
+  mechanism_effectiveness:
+    # Network-flooding attacks are stopped upstream, not by touching
+    # credentials or sessions.
+    dos:
+      default: 0.15
+      block_source_traffic: 1.00
+      rate_limit_traffic: 0.95
+      isolate_network_segment: 0.90
+      restrict_communication: 0.70
+      quarantine_device: 0.55
+      activate_backup_path: 0.85
+      failover_to_redundant_device: 0.80
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    ddos:
+      default: 0.12
+      block_source_traffic: 0.85   # many sources: harder to block cleanly
+      rate_limit_traffic: 0.90
+      isolate_network_segment: 0.95
+      restrict_communication: 0.70
+      quarantine_device: 0.50
+      activate_backup_path: 0.90
+      failover_to_redundant_device: 0.80
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    # Scanning is reconnaissance: blocking the source is the proportionate
+    # answer; drastic action is disproportionate, not more effective.
+    reconnaissance:
+      default: 0.20
+      block_source_traffic: 1.00
+      rate_limit_traffic: 0.80
+      restrict_communication: 0.85
+      isolate_network_segment: 0.90
+      quarantine_device: 0.70
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    port_scan:
+      default: 0.20
+      block_source_traffic: 1.00
+      rate_limit_traffic: 0.80
+      restrict_communication: 0.85
+      isolate_network_segment: 0.90
+      quarantine_device: 0.70
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    # ARP/MITM live at the link layer: segmentation and traffic control work;
+    # credential rotation does not evict the attacker from the path.
+    arp_spoofing:
+      default: 0.20
+      block_source_traffic: 0.85
+      isolate_network_segment: 1.00
+      restrict_communication: 0.80
+      quarantine_device: 0.90
+      rotate_credentials: 0.25
+      revoke_session: 0.25
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    mitm:
+      default: 0.25
+      block_source_traffic: 0.80
+      isolate_network_segment: 1.00
+      restrict_communication: 0.75
+      quarantine_device: 0.85
+      rotate_credentials: 0.55   # limits credential theft value
+      revoke_session: 0.60
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    # Credential/session attacks: identity controls are the mechanism.
+    credential_brute_force:
+      default: 0.30
+      rotate_credentials: 1.00
+      revoke_session: 0.85
+      block_source_traffic: 0.80
+      restrict_communication: 0.55
+      quarantine_device: 0.70
+      isolate_network_segment: 0.75
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    unauthorized_access:
+      default: 0.25
+      revoke_session: 1.00
+      rotate_credentials: 1.00
+      block_source_traffic: 0.30   # valid session survives traffic blocking
+      restrict_communication: 0.55
+      quarantine_device: 0.85
+      isolate_network_segment: 0.90
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    malicious_command:
+      default: 0.25
+      revoke_session: 0.95
+      rotate_credentials: 1.00
+      restrict_communication: 0.70
+      quarantine_device: 0.85
+      isolate_network_segment: 0.90
+      block_source_traffic: 0.45
+      restart_device_service: 0.60   # clears tampered setpoints
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    spoofed_telemetry:
+      default: 0.25
+      rotate_credentials: 0.95
+      revoke_session: 0.90
+      isolate_network_segment: 0.85
+      quarantine_device: 0.80
+      restart_device_service: 0.70
+      block_source_traffic: 0.40
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    # Firmware tamper persists through everything short of taking the device
+    # out of service: this is the case where drastic action is genuinely the
+    # only effective option, and the clinical trade-off is therefore real.
+    firmware_tamper:
+      default: 0.15
+      shutdown_device: 1.00
+      quarantine_device: 0.80
+      isolate_network_segment: 0.80
+      failover_to_redundant_device: 0.95
+      restart_device_service: 0.20   # tampered firmware survives a restart
+      rotate_credentials: 0.20
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    ransomware_behaviour:
+      default: 0.20
+      quarantine_device: 1.00
+      isolate_network_segment: 0.95
+      shutdown_device: 0.90
+      restrict_communication: 0.60
+      rotate_credentials: 0.45
+      revoke_session: 0.40
+      block_source_traffic: 0.35
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    unknown:
+      # Attack type not identified: containment that limits blast radius
+      # without assuming a mechanism.
+      default: 0.50
+      quarantine_device: 0.85
+      restrict_communication: 0.80
+      isolate_network_segment: 0.85
+      monitor_only: 1.00
+      escalate_to_clinical_staff: 1.00
+    none:
+      default: 1.00
+
+  # Baseline clinical cost of the action, BEFORE device context. The engine
+  # multiplies this by the device's clinical weight, so the same action costs
+  # almost nothing on a workstation and a great deal on a ventilator.
+  clinical_cost_base:
+    monitor_only: 0.00
+    escalate_to_clinical_staff: 0.02
+    block_source_traffic: 0.05
+    rate_limit_traffic: 0.10
+    revoke_session: 0.12
+    rotate_credentials: 0.15
+    restrict_communication: 0.35
+    quarantine_device: 0.60
+    isolate_network_segment: 0.70
+    activate_backup_path: 0.10
+    failover_to_redundant_device: 0.30
+    restart_device_service: 0.55
+    shutdown_device: 1.00
+
+  # Expected service interruption in seconds, used for the duration term and
+  # compared against the device's acceptable interruption.
+  interruption_seconds:
+    monitor_only: 0
+    escalate_to_clinical_staff: 0
+    block_source_traffic: 0
+    rate_limit_traffic: 2
+    revoke_session: 3
+    rotate_credentials: 8
+    restrict_communication: 15
+    quarantine_device: 120
+    isolate_network_segment: 180
+    activate_backup_path: 5
+    failover_to_redundant_device: 20
+    restart_device_service: 45
+    shutdown_device: 86400        # effectively indefinite
+
+  reversible:
+    monitor_only: true
+    escalate_to_clinical_staff: true
+    block_source_traffic: true
+    rate_limit_traffic: true
+    revoke_session: true
+    rotate_credentials: true
+    restrict_communication: true
+    quarantine_device: true
+    isolate_network_segment: true
+    activate_backup_path: true
+    failover_to_redundant_device: true
+    restart_device_service: false   # in-flight therapy state is lost
+    shutdown_device: false
+
+  # A safe failover path reduces the clinical cost of otherwise-drastic
+  # actions. This is what makes dos_on_ventilator differ from scenario 2.
+  redundancy_discount: 0.55
+
+  # Impact classification thresholds on the computed clinical cost.
+  impact_class_thresholds:
+    low_max: 0.15
+    moderate_max: 0.40
+    high_max: 0.85
+    # above high_max -> UNSAFE
+
+# -----------------------------------------------------------------------------
+# 4. DECISION COMBINATION
+# -----------------------------------------------------------------------------
+# How the three terms combine into a ranking over candidate actions.
+decision:
+  # Candidate score = security_term - clinical_penalty - inaction_penalty
+  #
+  # Rationale for the asymmetry: clinical harm is weighted above security
+  # gain because clinical harm is immediate, physical and often irreversible,
+  # while residual cyber risk is recoverable by escalating later. The
+  # sensitivity analysis sweeps this ratio, and the paper reports how the
+  # unsafe-action rate responds - that sweep is a result, not a default.
+  security_gain_weight: 0.45
+  clinical_cost_weight: 0.55
+
+  # Penalty for leaving a serious attack unaddressed, so patient-awareness
+  # does not collapse into always choosing monitor_only. Scales with cyber
+  # risk.
+  inaction_penalty_weight: 0.50
+
+  # Bands over the final decision score.
+  bands:
+    negligible_max: 0.15
+    low_max: 0.35
+    moderate_max: 0.60
+    high_max: 0.82
