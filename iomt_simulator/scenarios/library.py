@@ -526,6 +526,251 @@ def dos_on_ventilator() -> ScenarioSpec:
     )
 
 
+# ---------------------------------------------------------------------------
+# Stealth / low-intensity scenarios
+# ---------------------------------------------------------------------------
+# RESEARCH VALIDITY: a corpus containing only full-intensity attacks is
+# trivially separable, and a detector trained on it reports a meaningless
+# F1 near 1.0 while failing on anything subtle. A 14,000 pps flood IS
+# obvious - that is correct, not a defect - but a realistic evaluation corpus
+# must also contain attacks that sit inside the benign distribution.
+# These scenarios supply that hard tail. See docs/detection-validity.md.
+
+
+def stealth_slow_recon() -> ScenarioSpec:
+    """Low-and-slow scanning that stays within benign traffic levels."""
+    return ScenarioSpec(
+        scenario_id="stealth_slow_recon",
+        description=(
+            "Low-and-slow reconnaissance at 6% of normal scan intensity, "
+            "spread over a long window so per-window volume stays inside the "
+            "benign range. Separable only by combining port-spread with "
+            "timing regularity, not by any volume threshold."
+        ),
+        seed=20260110,
+        total_ticks=600,
+        start_time=START,
+        devices=standard_fleet(),
+        attacks=[
+            AttackSpec(
+                attack_type=AttackType.RECONNAISSANCE,
+                target_device_id="GW-ICU-01",
+                start_tick=120,
+                duration_ticks=380,
+                intensity=0.06,
+                source_ip="203.0.113.201",
+                label="stealth scan inside benign envelope",
+            )
+        ],
+        expectations={"difficulty": "hard", "purpose": "low_intensity_detection"},
+    )
+
+
+def stealth_low_rate_dos() -> ScenarioSpec:
+    """Degradation-only DoS overlapping benign burst traffic."""
+    return ScenarioSpec(
+        scenario_id="stealth_low_rate_dos",
+        description=(
+            "Low-rate DoS at 1.5% intensity against the ICU gateway, chosen "
+            "to sit inside the heavy tail of benign backup and imaging "
+            "bursts. Volume thresholds cannot separate it from a nightly "
+            "backup; the distinguishing signal is the SYN/connection "
+            "structure, not the rate."
+        ),
+        seed=20260111,
+        total_ticks=600,
+        start_time=START,
+        devices=standard_fleet(),
+        attacks=[
+            AttackSpec(
+                attack_type=AttackType.DOS,
+                target_device_id="GW-ICU-01",
+                start_tick=150,
+                duration_ticks=320,
+                intensity=0.015,
+                source_ip="203.0.113.202",
+                label="low-rate degradation",
+            )
+        ],
+        expectations={"difficulty": "hard", "purpose": "low_intensity_detection"},
+    )
+
+
+def stealth_passive_mitm() -> ScenarioSpec:
+    """TLS-preserving MITM with minimal added latency."""
+    return ScenarioSpec(
+        scenario_id="stealth_passive_mitm",
+        description=(
+            "Passive MITM against the ICU monitor at 12% intensity, preserving "
+            "TLS and adding only a few milliseconds of relay latency - inside "
+            "the benign congestion-spike range. The ARP positioning is brief "
+            "and low-volume. This is the hardest case in the corpus."
+        ),
+        seed=20260112,
+        total_ticks=600,
+        start_time=START,
+        devices=standard_fleet(),
+        attacks=[
+            AttackSpec(
+                attack_type=AttackType.ARP_SPOOFING,
+                target_device_id="ECG-ICU-01",
+                start_tick=140,
+                duration_ticks=40,
+                intensity=0.10,
+                source_ip="10.0.10.44",
+                source_mac="02:1a:11:00:00:44",
+            ),
+            AttackSpec(
+                attack_type=AttackType.MITM,
+                target_device_id="ECG-ICU-01",
+                start_tick=150,
+                duration_ticks=330,
+                intensity=0.12,
+                source_ip="10.0.10.44",
+                source_mac="02:1a:11:00:00:44",
+            ),
+        ],
+        expectations={"difficulty": "very_hard", "purpose": "low_intensity_detection"},
+    )
+
+
+def stealth_credential_creep() -> ScenarioSpec:
+    """Slow credential guessing below lockout thresholds."""
+    return ScenarioSpec(
+        scenario_id="stealth_credential_creep",
+        description=(
+            "Credential guessing at 5% intensity - a handful of attempts per "
+            "window, below any lockout threshold and inside the range produced "
+            "by staff mistyping passwords. Requires correlating the attempt "
+            "pattern over time rather than counting failures in one window."
+        ),
+        seed=20260113,
+        total_ticks=600,
+        start_time=START,
+        devices=standard_fleet(),
+        attacks=[
+            AttackSpec(
+                attack_type=AttackType.CREDENTIAL_BRUTE_FORCE,
+                target_device_id="WS-NURSE-01",
+                start_tick=130,
+                duration_ticks=350,
+                intensity=0.05,
+                source_ip="203.0.113.203",
+            )
+        ],
+        expectations={"difficulty": "hard", "purpose": "low_intensity_detection"},
+    )
+
+
+def mixed_difficulty_corpus() -> ScenarioSpec:
+    """Mixed-intensity corpus spanning obvious to stealthy.
+
+    This is the scenario detection models are trained and evaluated on, so
+    that reported metrics reflect a realistic difficulty spread rather than
+    only the easy tail.
+    """
+    return ScenarioSpec(
+        scenario_id="mixed_difficulty_corpus",
+        description=(
+            "Training/evaluation corpus spanning the full intensity range: "
+            "obvious floods, moderate attacks, and stealth attacks that sit "
+            "inside the benign distribution. Intended as the primary corpus "
+            "for simulator-based detection experiments so that metrics are "
+            "not dominated by trivially separable high-intensity traffic."
+        ),
+        seed=20260114,
+        total_ticks=900,
+        start_time=START,
+        devices=standard_fleet(),
+        attacks=[
+            # --- obvious: full-intensity flood -------------------------
+            AttackSpec(
+                attack_type=AttackType.DDOS,
+                target_device_id="GW-ICU-01",
+                start_tick=60,
+                duration_ticks=40,
+                intensity=1.0,
+                source_ip="203.0.113.10",
+                label="obvious",
+            ),
+            # --- moderate ----------------------------------------------
+            AttackSpec(
+                attack_type=AttackType.PORT_SCAN,
+                target_device_id="GW-ICU-01",
+                start_tick=150,
+                duration_ticks=30,
+                intensity=0.35,
+                source_ip="203.0.113.11",
+                label="moderate",
+            ),
+            AttackSpec(
+                attack_type=AttackType.DOS,
+                target_device_id="VENT-ICU-02",
+                start_tick=230,
+                duration_ticks=45,
+                intensity=0.30,
+                source_ip="203.0.113.12",
+                label="moderate",
+            ),
+            # --- stealth: inside the benign distribution ---------------
+            AttackSpec(
+                attack_type=AttackType.RECONNAISSANCE,
+                target_device_id="ECG-ICU-01",
+                start_tick=330,
+                duration_ticks=90,
+                intensity=0.07,
+                source_ip="203.0.113.13",
+                label="stealth",
+            ),
+            AttackSpec(
+                attack_type=AttackType.CREDENTIAL_BRUTE_FORCE,
+                target_device_id="WS-NURSE-01",
+                start_tick=450,
+                duration_ticks=110,
+                intensity=0.06,
+                source_ip="203.0.113.14",
+                label="stealth",
+            ),
+            AttackSpec(
+                attack_type=AttackType.ARP_SPOOFING,
+                target_device_id="PUMP-ICU-01",
+                start_tick=580,
+                duration_ticks=35,
+                intensity=0.12,
+                source_ip="10.0.10.44",
+                source_mac="02:1a:11:00:00:44",
+                label="stealth",
+            ),
+            AttackSpec(
+                attack_type=AttackType.MITM,
+                target_device_id="PUMP-ICU-01",
+                start_tick=590,
+                duration_ticks=120,
+                intensity=0.15,
+                source_ip="10.0.10.44",
+                source_mac="02:1a:11:00:00:44",
+                label="stealth",
+            ),
+            # --- host-level --------------------------------------------
+            AttackSpec(
+                attack_type=AttackType.MALICIOUS_COMMAND,
+                target_device_id="PUMP-WARD-02",
+                start_tick=740,
+                duration_ticks=90,
+                intensity=1.0,
+                source_ip="10.0.10.44",
+                params={"target_rate_ml_h": 72.0},
+                label="host-level",
+            ),
+        ],
+        expectations={
+            "difficulty": "mixed",
+            "purpose": "primary_detection_corpus",
+            "intensity_range": [0.06, 1.0],
+        },
+    )
+
+
 SCENARIOS = {
     "baseline_normal": baseline_normal,
     "s1_noncritical_compromise": s1_noncritical_compromise,
@@ -535,7 +780,24 @@ SCENARIOS = {
     "recon_then_pivot": recon_then_pivot,
     "mitm_monitor": mitm_monitor,
     "dos_on_ventilator": dos_on_ventilator,
+    "stealth_slow_recon": stealth_slow_recon,
+    "stealth_low_rate_dos": stealth_low_rate_dos,
+    "stealth_passive_mitm": stealth_passive_mitm,
+    "stealth_credential_creep": stealth_credential_creep,
+    "mixed_difficulty_corpus": mixed_difficulty_corpus,
 }
+
+#: Scenarios whose attacks sit inside the benign distribution. Reported
+#: separately so headline metrics are not dominated by easy traffic.
+STEALTH_SCENARIOS = (
+    "stealth_slow_recon",
+    "stealth_low_rate_dos",
+    "stealth_passive_mitm",
+    "stealth_credential_creep",
+)
+
+#: The corpus detection models are trained and evaluated on.
+PRIMARY_DETECTION_CORPUS = "mixed_difficulty_corpus"
 
 MANDATED_SCENARIOS = (
     "s1_noncritical_compromise",
@@ -564,7 +826,9 @@ def export_all(target_dir: str | Path = "configs/scenarios") -> list[Path]:
 
 __all__ = [
     "MANDATED_SCENARIOS",
+    "PRIMARY_DETECTION_CORPUS",
     "SCENARIOS",
+    "STEALTH_SCENARIOS",
     "export_all",
     "get_scenario",
     "standard_fleet",

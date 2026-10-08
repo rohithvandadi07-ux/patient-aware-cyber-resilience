@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from backend.app.domain.enums import (
     AssertionClass,
-    AttackType,
     EvidenceKind,
     PatientDependencyLevel,
     ResponseActionType,

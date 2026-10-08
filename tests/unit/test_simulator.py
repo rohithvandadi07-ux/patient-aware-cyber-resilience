@@ -36,8 +36,12 @@ def _signature(events) -> list[tuple]:
 
 class TestDeterminism:
     def test_identical_runs_produce_identical_streams(self) -> None:
-        a = SmartHospital(scenario=get_scenario("baseline_normal"), ids=IdFactory(deterministic=True))
-        b = SmartHospital(scenario=get_scenario("baseline_normal"), ids=IdFactory(deterministic=True))
+        a = SmartHospital(
+            scenario=get_scenario("baseline_normal"), ids=IdFactory(deterministic=True)
+        )
+        b = SmartHospital(
+            scenario=get_scenario("baseline_normal"), ids=IdFactory(deterministic=True)
+        )
         assert _signature(a.run(80)) == _signature(b.run(80))
 
     def test_different_seeds_produce_different_streams(self) -> None:
@@ -171,9 +175,7 @@ class TestVentilatorClinicalCoupling:
         )
         h.run(150)
         tel = [
-            e
-            for e in h.event_log
-            if e.device_id == "VENT-ICU-01" and e.kind is EventKind.TELEMETRY
+            e for e in h.event_log if e.device_id == "VENT-ICU-01" and e.kind is EventKind.TELEMETRY
         ][-1]
         reported = tel.measurements["spo2_pct"]
         truth = tel.measurements["truth_spo2_pct"]
@@ -220,11 +222,7 @@ class TestAttackObservability:
 
     def test_port_scan_raises_distinct_destination_ports(self, make_hospital) -> None:
         h = make_hospital("recon_then_pivot", ticks=50)
-        scans = [
-            e
-            for e in h.event_log
-            if e.ground_truth_attack is AttackType.PORT_SCAN
-        ]
+        scans = [e for e in h.event_log if e.ground_truth_attack is AttackType.PORT_SCAN]
         assert scans
         assert max(e.measurements["distinct_dst_ports"] for e in scans) > 20.0
 
@@ -288,16 +286,14 @@ class TestActuation:
         assert not any(a.attack_type is AttackType.MALICIOUS_COMMAND for a in pump.attacks)
         assert pump.state.credentials_version == 2
 
-    def test_traffic_blocking_does_not_stop_a_session_based_attack(
-        self, make_hospital
-    ) -> None:
+    def test_traffic_blocking_does_not_stop_a_session_based_attack(self, make_hospital) -> None:
         """This asymmetry is what makes mandated scenario 3 fail recovery."""
         h = make_hospital("s3_recovery_failure", ticks=80)
         pump = h.devices["PUMP-ICU-01"]
         h.apply_response("block_source_traffic", device_id="PUMP-ICU-01")
-        assert any(
-            a.attack_type is AttackType.MALICIOUS_COMMAND for a in pump.attacks
-        ), "traffic blocking must not clear a valid-session attack"
+        assert any(a.attack_type is AttackType.MALICIOUS_COMMAND for a in pump.attacks), (
+            "traffic blocking must not clear a valid-session attack"
+        )
 
     def test_control_release_restores_connectivity(self, make_hospital) -> None:
         h = make_hospital("baseline_normal", ticks=20)

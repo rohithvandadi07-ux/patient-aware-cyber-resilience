@@ -68,10 +68,15 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF", "S"]
 ignore = ["S101", "B008", "RUF012", "N818"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S", "E501"]
-"evaluation/**" = ["S311"]
+"tests/**" = ["S", "E501", "N806", "RUF043"]
+# `X` for a design matrix and `y` for labels are universal ML conventions;
+# renaming them to satisfy pep8-naming would make the code less readable to
+# anyone who knows scikit-learn.
+"cybersecurity/detectors/**" = ["N803", "N806"]
+"cybersecurity/splits.py" = ["N803", "N806"]
+"evaluation/**" = ["N803", "N806", "S311"]
+"experiments/**" = ["N803", "N806", "S311"]
 "iomt_simulator/**" = ["S311"]
-"experiments/**" = ["S311"]
 
 [tool.mypy]
 python_version = "3.11"
