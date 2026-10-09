@@ -164,8 +164,7 @@ class ECGMonitor(SimulatedDevice):
         )
 
     def on_control_applied(self, action) -> None:
-        if action.name in {"rotate_credentials", "revoke_session"}:
-            self.clear_attacks(AttackType.SPOOFED_TELEMETRY)
+        # Session-based attacks are cleared by the base class.
         if action.name == "restart_device_service":
             self._missed_samples = 0
 

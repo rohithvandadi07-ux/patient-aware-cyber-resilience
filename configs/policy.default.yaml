@@ -1,0 +1,184 @@
+# =============================================================================
+#  Controlled-Autonomy Policy - default profile
+# =============================================================================
+#
+#  SIMULATION POLICY, NOT CLINICAL GUIDANCE. Every rule here is a research
+#  parameter governing a simulated environment. Nothing in this file is a
+#  standard of care, a triage protocol, or advice about real devices.
+#
+#  The policy engine is DETERMINISTIC and AUTHORITATIVE. It receives the
+#  risk engine's selected action plus the risk scores, and returns exactly
+#  one verdict: AUTO_ALLOWED, APPROVAL_REQUIRED or DENIED. No agent can
+#  override it, and no LLM participates in the decision.
+#
+#  Rules are evaluated in order and the FIRST match wins, so hard denials
+#  are listed first and permissive rules last. The matched rule's name is
+#  recorded in the verdict, which is what makes an autonomous action
+#  auditable after the fact.
+# =============================================================================
+
+policy_version: "v1"
+description: >
+  Default controlled-autonomy policy. Graded autonomy by response impact
+  class, with hard denials for unsafe actions and escalation gates driven by
+  clinical risk and evidence uncertainty.
+
+# -----------------------------------------------------------------------------
+# Roles authorised to approve
+# -----------------------------------------------------------------------------
+approval_roles:
+  clinical: clinical_approver     # may approve clinically-impactful actions
+  security: soc_analyst           # may approve security-only actions
+  admin: admin
+
+# -----------------------------------------------------------------------------
+# Rules, evaluated in order; first match wins
+# -----------------------------------------------------------------------------
+rules:
+
+  # --- hard denials --------------------------------------------------------
+  - name: deny_unsafe_impact
+    decision: denied
+    when:
+      impact_class: [unsafe]
+    reason: >
+      The response-impact assessment classified this action as unsafe for the
+      patient depending on this device. A denied action is not escalated for
+      approval: the platform does not ask a human to authorise something it
+      has determined is unsafe, because that converts a safety judgement into
+      a liability transfer.
+
+  - name: deny_therapy_interruption_without_alternative
+    decision: denied
+    when:
+      interrupts_life_sustaining_therapy: true
+      safe_alternative_available: false
+    reason: >
+      This action would interrupt life-sustaining therapy and no validated
+      failover exists. Denied regardless of cyber risk.
+
+  - name: deny_already_exhausted
+    decision: denied
+    when:
+      already_attempted: true
+    reason: >
+      This action was already executed for this incident and did not achieve
+      recovery. Repeating it cannot be expected to work and delays an
+      effective response.
+
+  # --- escalation gates ----------------------------------------------------
+  - name: approval_for_high_clinical_risk
+    decision: approval_required
+    when:
+      min_clinical_risk: 0.60
+      min_impact_class: moderate
+    required_role: clinical_approver
+    reason: >
+      Clinical risk is high and this action carries more than low clinical
+      impact. A clinician must weigh the trade-off.
+
+  - name: approval_for_life_support_involvement
+    decision: approval_required
+    when:
+      life_support_involved: true
+      min_impact_class: moderate
+    required_role: clinical_approver
+    reason: >
+      The device is sustaining life support. Any action beyond low clinical
+      impact requires clinical approval even where a failover exists.
+
+  - name: approval_for_high_impact
+    decision: approval_required
+    when:
+      impact_class: [high]
+    required_role: clinical_approver
+    reason: High clinical impact always requires human approval.
+
+  - name: approval_for_uncertain_evidence
+    decision: approval_required
+    when:
+      min_cyber_uncertainty: 0.50
+      min_impact_class: moderate
+    required_role: soc_analyst
+    reason: >
+      Evidence supporting this detection is weak. Acting autonomously on an
+      uncertain detection risks an unnecessary intervention, so a human
+      confirms. This gate is why uncertainty is reported alongside the risk
+      score rather than folded into it.
+
+  - name: approval_for_irreversible_action
+    decision: approval_required
+    when:
+      reversible: false
+    required_role: clinical_approver
+    reason: >
+      This action cannot be rolled back. Irreversibility is treated as
+      requiring human authorisation independent of its impact class.
+
+  - name: approval_for_unknown_clinical_context
+    decision: approval_required
+    when:
+      min_clinical_uncertainty: 0.80
+      min_impact_class: moderate
+    required_role: clinical_approver
+    reason: >
+      The clinical context of this device is unknown, so its patient
+      dependency cannot be assessed. The platform fails safe and asks.
+
+  # --- autonomous action ---------------------------------------------------
+  - name: auto_allow_low_impact
+    decision: auto_allowed
+    when:
+      impact_class: [low]
+    reason: >
+      Low clinical impact and the device's clinical context permits
+      autonomous action.
+
+  - name: auto_allow_moderate_on_noncritical
+    decision: auto_allowed
+    when:
+      impact_class: [moderate]
+      max_clinical_risk: 0.35
+      allowed_criticality: [non_clinical, supportive]
+    reason: >
+      Moderate impact on a non-clinical or supportive asset with low
+      clinical risk. Autonomous containment is defensible here, and
+      requiring approval for every action on a workstation would make the
+      platform operationally useless.
+
+  - name: auto_allow_monitoring
+    decision: auto_allowed
+    when:
+      action_in: [monitor_only, escalate_to_clinical_staff]
+    reason: >
+      Monitoring and escalation carry no clinical cost and need no approval.
+
+  # --- default -------------------------------------------------------------
+  - name: default_require_approval
+    decision: approval_required
+    required_role: clinical_approver
+    when: {}
+    reason: >
+      No rule explicitly permitted autonomous action. The default is to ask
+      rather than to act: a policy whose fall-through is permissive is not a
+      safety policy.
+
+# -----------------------------------------------------------------------------
+# Approval workflow
+# -----------------------------------------------------------------------------
+approval:
+  timeout_seconds: 900
+  # What happens when an approval request expires unanswered. 'deny' is the
+  # only defensible default: an unanswered request must not become consent.
+  on_timeout: deny
+  # Minimum justification length the requesting agent must supply.
+  min_justification_chars: 20
+
+# -----------------------------------------------------------------------------
+# Autonomy master switch
+# -----------------------------------------------------------------------------
+autonomy:
+  enabled: true
+  # When false, every action requires approval. Used by the
+  # 'without controlled autonomy' ablation.
+  max_autonomous_actions_per_incident: 3

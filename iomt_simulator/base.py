@@ -156,9 +156,11 @@ class SimulatedDevice(ABC):
             self.state.network_state = NetworkState.RESTRICTED
         elif name == "revoke_session":
             self.state.active_sessions = 0
+            self._invalidate_sessions()
         elif name == "rotate_credentials":
             self.state.credentials_version += 1
             self.state.active_sessions = 0
+            self._invalidate_sessions()
         elif name == "restart_device_service":
             self.state.service_available = True
             self.state.fault_codes = []
@@ -171,6 +173,32 @@ class SimulatedDevice(ABC):
             self.state.operational_state = DeviceOperationalState.STANDBY
             self.state.delivering_therapy = False
         self.on_control_applied(action)
+
+    def _invalidate_sessions(self) -> None:
+        """Clear every attack that depends on an authenticated session.
+
+        Credential rotation and session revocation remove the attacker's
+        *session*, so any attack carried over that session stops - not just
+        the command channel it happened to be using. Modelled once here so
+        all devices behave consistently: previously the infusion pump
+        cleared MALICIOUS_COMMAND but left UNAUTHORIZED_ACCESS installed, so
+        rotating credentials appeared to have no effect on the session
+        itself and recovery verification correctly reported the attack as
+        still active. That was a simulator gap, not a recovery-engine fault.
+
+        Kept deliberately in step with
+        ``recovery.engine.MECHANISM_SEVERED_BY``: if an action is listed
+        there as severing an attack, the simulator must actually sever it,
+        or the two layers disagree and the recovery metrics become
+        meaningless.
+        """
+        session_based = {
+            AttackType.UNAUTHORIZED_ACCESS,
+            AttackType.MALICIOUS_COMMAND,
+            AttackType.SPOOFED_TELEMETRY,
+            AttackType.CREDENTIAL_BRUTE_FORCE,
+        }
+        self.attacks = [a for a in self.attacks if a.attack_type not in session_based]
 
     def on_control_applied(self, action: ControlAction) -> None:  # noqa: B027
         """Hook for device-specific reaction to a control action.

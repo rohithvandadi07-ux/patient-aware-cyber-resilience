@@ -241,9 +241,7 @@ class Ventilator(SimulatedDevice):
         return events
 
     def on_control_applied(self, action) -> None:
-        if action.name in {"rotate_credentials", "revoke_session"}:
-            self.clear_attacks(AttackType.MALICIOUS_COMMAND)
-            self.clear_attacks(AttackType.SPOOFED_TELEMETRY)
+        # Session-based attacks are cleared by the base class.
         if action.name == "restart_device_service":
             self.rr = self.SET_RR
             self.tidal_ml = self.SET_TIDAL_ML
