@@ -1,0 +1,176 @@
+# =============================================================================
+#  Fabric development network: 1 orderer, 3 peers, 3 CouchDB state databases
+# =============================================================================
+#
+#  Brought up separately from the application stack (see the repository's
+#  top-level docker-compose.yml) because the platform must be runnable
+#  WITHOUT Fabric. The default PROVENANCE_BACKEND=local needs none of this.
+#
+#  CouchDB rather than LevelDB so provenance records are richly queryable by
+#  incident, which the audit view needs.
+# =============================================================================
+
+name: pacr-fabric
+
+networks:
+  pacr:
+    name: pacr-fabric-net
+
+volumes:
+  orderer.pacr.local:
+  peer0.hospital.pacr.local:
+  peer0.securityops.pacr.local:
+  peer0.audit.pacr.local:
+
+services:
+  orderer.pacr.local:
+    container_name: orderer.pacr.local
+    image: hyperledger/fabric-orderer:2.5
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+    volumes:
+      - ../organizations/ordererOrganizations/pacr.local/orderers/orderer.pacr.local/msp:/var/hyperledger/orderer/msp
+      - ../organizations/ordererOrganizations/pacr.local/orderers/orderer.pacr.local/tls:/var/hyperledger/orderer/tls
+      - orderer.pacr.local:/var/hyperledger/production/orderer
+    ports:
+      - "7050:7050"
+      - "7053:7053"
+    networks:
+      - pacr
+
+  peer0.hospital.pacr.local:
+    container_name: peer0.hospital.pacr.local
+    image: hyperledger/fabric-peer:2.5
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=peer0.hospital.pacr.local
+      - CORE_PEER_ADDRESS=peer0.hospital.pacr.local:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_LOCALMSPID=HospitalMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.hospital.pacr.local:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.hospital.pacr.local:7051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb-hospital:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:?set COUCHDB_PASSWORD in .env}
+      - CORE_CHAINCODE_EXTERNALBUILDERS=
+    volumes:
+      - ../organizations/peerOrganizations/hospital.pacr.local/peers/peer0.hospital.pacr.local/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/hospital.pacr.local/peers/peer0.hospital.pacr.local/tls:/etc/hyperledger/fabric/tls
+      - peer0.hospital.pacr.local:/var/hyperledger/production
+      - /var/run/docker.sock:/host/var/run/docker.sock
+    ports:
+      - "7051:7051"
+    depends_on:
+      - couchdb-hospital
+      - orderer.pacr.local
+    networks:
+      - pacr
+
+  couchdb-hospital:
+    container_name: couchdb-hospital
+    image: couchdb:3.3
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?set COUCHDB_PASSWORD in .env}
+    networks:
+      - pacr
+
+  peer0.securityops.pacr.local:
+    container_name: peer0.securityops.pacr.local
+    image: hyperledger/fabric-peer:2.5
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=peer0.securityops.pacr.local
+      - CORE_PEER_ADDRESS=peer0.securityops.pacr.local:8051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+      - CORE_PEER_LOCALMSPID=SecurityOpsMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.securityops.pacr.local:8051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb-securityops:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:?set COUCHDB_PASSWORD in .env}
+    volumes:
+      - ../organizations/peerOrganizations/securityops.pacr.local/peers/peer0.securityops.pacr.local/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/securityops.pacr.local/peers/peer0.securityops.pacr.local/tls:/etc/hyperledger/fabric/tls
+      - peer0.securityops.pacr.local:/var/hyperledger/production
+      - /var/run/docker.sock:/host/var/run/docker.sock
+    ports:
+      - "8051:8051"
+    depends_on:
+      - couchdb-securityops
+      - orderer.pacr.local
+    networks:
+      - pacr
+
+  couchdb-securityops:
+    container_name: couchdb-securityops
+    image: couchdb:3.3
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?set COUCHDB_PASSWORD in .env}
+    networks:
+      - pacr
+
+  peer0.audit.pacr.local:
+    container_name: peer0.audit.pacr.local
+    image: hyperledger/fabric-peer:2.5
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=peer0.audit.pacr.local
+      - CORE_PEER_ADDRESS=peer0.audit.pacr.local:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_LOCALMSPID=AuditMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.audit.pacr.local:9051
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb-audit:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:?set COUCHDB_PASSWORD in .env}
+    volumes:
+      - ../organizations/peerOrganizations/audit.pacr.local/peers/peer0.audit.pacr.local/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/audit.pacr.local/peers/peer0.audit.pacr.local/tls:/etc/hyperledger/fabric/tls
+      - peer0.audit.pacr.local:/var/hyperledger/production
+      - /var/run/docker.sock:/host/var/run/docker.sock
+    ports:
+      - "9051:9051"
+    depends_on:
+      - couchdb-audit
+      - orderer.pacr.local
+    networks:
+      - pacr
+
+  couchdb-audit:
+    container_name: couchdb-audit
+    image: couchdb:3.3
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:?set COUCHDB_PASSWORD in .env}
+    networks:
+      - pacr

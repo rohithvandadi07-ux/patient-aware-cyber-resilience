@@ -1,0 +1,46 @@
+# =============================================================================
+#  cryptogen input for the development network ONLY
+# =============================================================================
+#
+#  SECURITY NOTE. cryptogen is a DEVELOPMENT tool. It generates all private
+#  keys in one place, which is precisely what a real deployment must not do:
+#  each organisation should run its own CA and never hand its signing key to
+#  anyone else, including the party standing up the network.
+#
+#  Material generated from this file is excluded from version control
+#  (.gitignore blocks crypto-config/, organizations/ and every key and
+#  certificate pattern). Nothing generated here should reach a shared
+#  environment.
+# =============================================================================
+
+OrdererOrgs:
+  - Name: Orderer
+    Domain: pacr.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer
+
+PeerOrgs:
+  - Name: Hospital
+    Domain: hospital.pacr.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 2   # clinical_approver, admin
+
+  - Name: SecurityOps
+    Domain: securityops.pacr.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 2   # soc_analyst, admin
+
+  - Name: Audit
+    Domain: audit.pacr.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1   # auditor (read-only by endorsement policy)

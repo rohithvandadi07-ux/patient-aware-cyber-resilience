@@ -1,0 +1,196 @@
+# =============================================================================
+#  Hyperledger Fabric channel configuration
+#  Patient-Aware Cyber-Resilience provenance channel
+# =============================================================================
+#
+#  THREE ORGANISATIONS, chosen to reflect a genuine separation of duties
+#  rather than to look impressive:
+#
+#  Hospital      - owns the devices and the clinical context. Submits
+#                  approval records, because a clinician's authorisation is
+#                  the hospital's act, not the SOC's.
+#  SecurityOps   - operates the defence. Submits incident, decision and
+#                  response records.
+#  Audit         - submits recovery records and, crucially, can READ
+#                  everything without being able to originate a security
+#                  decision. An auditor who depends on the audited party for
+#                  the record is not an auditor.
+#
+#  The endorsement policy requires a MAJORITY, so SecurityOps alone cannot
+#  commit a record attesting to its own decisions. That is the property that
+#  makes the ledger worth having: without it, a single compromised or
+#  mistaken organisation could write whatever history it liked.
+# =============================================================================
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer.pacr.local:7050
+
+  - &Hospital
+    Name: HospitalMSP
+    ID: HospitalMSP
+    MSPDir: ../organizations/peerOrganizations/hospital.pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin', 'HospitalMSP.peer', 'HospitalMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin', 'HospitalMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('HospitalMSP.peer')"
+
+  - &SecurityOps
+    Name: SecurityOpsMSP
+    ID: SecurityOpsMSP
+    MSPDir: ../organizations/peerOrganizations/securityops.pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.admin', 'SecurityOpsMSP.peer', 'SecurityOpsMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.admin', 'SecurityOpsMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.peer')"
+
+  - &Audit
+    Name: AuditMSP
+    ID: AuditMSP
+    MSPDir: ../organizations/peerOrganizations/audit.pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('AuditMSP.admin', 'AuditMSP.peer', 'AuditMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('AuditMSP.admin', 'AuditMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('AuditMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('AuditMSP.peer')"
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    # MAJORITY, not ANY: a single organisation must not be able to commit a
+    # record attesting to its own decisions.
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.pacr.local
+        Port: 7050
+        ClientTLSCert: ../organizations/ordererOrganizations/pacr.local/orderers/orderer.pacr.local/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/pacr.local/orderers/orderer.pacr.local/tls/server.crt
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  PACRGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities: *OrdererCapabilities
+    Consortiums:
+      PACRConsortium:
+        Organizations:
+          - *Hospital
+          - *SecurityOps
+          - *Audit
+
+  PACRChannel:
+    Consortium: PACRConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Hospital
+        - *SecurityOps
+        - *Audit
+      Capabilities: *ApplicationCapabilities
