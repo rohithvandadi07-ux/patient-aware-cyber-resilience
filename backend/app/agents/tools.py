@@ -18,6 +18,16 @@ dedicated rule-table tests, not something to build hastily as a Phase 4 side
 effect. Phase 6 now exists (`app/policy_engine/`, 100% measured branch
 coverage) and `evaluate_policy` below is real wiring to it -- still
 read-only, still never execution.
+
+Phase 7 adds `get_recovery_results_for_incident`, reading the L8
+`RecoveryResultRepository` (`app/recovery/`). It is not yet called by any
+agent's prompt -- the Investigation Agent's tool list (Section 11) does not
+name it, and wiring "show the Investigation Agent what the last recovery
+check found" into its prompt is a decision for whatever later phase builds
+the actual multi-agent re-investigation pipeline (still undecided, per
+Section 11's own "orchestration mechanism [...] not decided yet"). It is
+exposed now so that evidence is genuinely queryable rather than just
+asserted to exist, not because it is already wired end to end.
 """
 
 from app.iomt_simulator.registry import DeviceRegistry
@@ -25,8 +35,9 @@ from app.policy_engine.engine import PolicyEngine
 from app.repositories.agent_traces import AgentTraceRecorder
 from app.repositories.incidents import IncidentRepository
 from app.repositories.log_capture import CapturedLogRecord, LogCaptureHandler
+from app.repositories.recovery_results import RecoveryResultRepository
 from app.repositories.telemetry_events import NetworkEventStore, TelemetryStore
-from app.schemas.agents import ClinicalContext
+from app.schemas.agents import ClinicalContext, RecoveryResult
 from app.schemas.device import DeviceState
 from app.schemas.enums import ResponseActionCategory
 from app.schemas.events import NetworkEvent
@@ -51,6 +62,7 @@ class AgentToolkit:
         telemetry_store: TelemetryStore,
         log_handler: LogCaptureHandler,
         trace_recorder: AgentTraceRecorder,
+        recovery_result_repository: RecoveryResultRepository | None = None,
     ) -> None:
         self._device_registry = device_registry
         self._incident_repository = incident_repository
@@ -58,6 +70,12 @@ class AgentToolkit:
         self._telemetry_store = telemetry_store
         self._log_handler = log_handler
         self.trace_recorder = trace_recorder
+        # Optional, defaulted (unlike every other store above) so Phase 4-6
+        # callers/fixtures that construct AgentToolkit without this Phase 7
+        # addition keep working unchanged -- a fresh, empty repository is a
+        # safe default since "no recovery checks recorded yet" is exactly
+        # what a new incident's toolkit should report.
+        self._recovery_result_repository = recovery_result_repository or RecoveryResultRepository()
 
     @property
     def incident_repository(self) -> IncidentRepository:
@@ -78,6 +96,14 @@ class AgentToolkit:
     def telemetry_store(self) -> TelemetryStore:
         """Exposed for the same reason as `network_event_store`."""
         return self._telemetry_store
+
+    @property
+    def recovery_result_repository(self) -> RecoveryResultRepository:
+        """Exposed so the Recovery Orchestrator (L8, `app/recovery/engine.py`)
+        can record a `RecoveryResult` into the same repository
+        `get_recovery_results_for_incident` reads from, without constructing
+        a second, disconnected instance."""
+        return self._recovery_result_repository
 
     def get_device_state(self, device_id: str) -> DeviceState:
         """Healthcare Context Agent's and Investigation Agent's tool (Section
@@ -113,6 +139,15 @@ class AgentToolkit:
         """Threat Reasoning Agent's tool for propagation context (Section 11:
         'prior incidents on same device')."""
         return self._incident_repository.list_for_device(device_id)
+
+    def get_recovery_results_for_incident(self, incident_id: str) -> list[RecoveryResult]:
+        """Not yet named in Section 11's agent table, and not yet called by
+        any agent's prompt (see this module's docstring) -- added in Phase 7
+        so the evidence a reopened incident carries (Section 7 step 12's
+        "with the new evidence appended") is genuinely queryable through the
+        same toolkit boundary every other read goes through, in the order
+        each recovery check was recorded."""
+        return self._recovery_result_repository.list_for_incident(incident_id)
 
     def evaluate_policy(
         self, risk_score: RiskScore, context: ClinicalContext

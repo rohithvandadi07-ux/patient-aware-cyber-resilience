@@ -62,6 +62,58 @@ def test_get_prior_incidents_for_device_reflects_repository_state(toolkit):
     assert results[0].incident_id == "incident-1"
 
 
+def test_get_recovery_results_for_incident_returns_empty_when_nothing_recorded(toolkit):
+    assert toolkit.get_recovery_results_for_incident("incident-1") == []
+
+
+def test_get_recovery_results_for_incident_reflects_the_same_repository_the_property_exposes(toolkit):
+    # Phase 7: toolkit.recovery_result_repository is the same instance the
+    # Recovery Orchestrator (L8) records into -- a write through the
+    # property must show up through the read-only tool method.
+    from app.schemas.agents import RecoveryResult
+
+    result = RecoveryResult(
+        incident_id="incident-1",
+        response_id="response-1",
+        containment_verified=True,
+        residual_threats=[],
+        recovery_succeeded=True,
+        reinvestigation_required=False,
+    )
+    toolkit.recovery_result_repository.record(result)
+
+    results = toolkit.get_recovery_results_for_incident("incident-1")
+
+    assert results == [result]
+
+
+def test_toolkit_defaults_to_a_fresh_recovery_result_repository_when_none_is_passed(toolkit):
+    # The constructor parameter is optional for backward compatibility with
+    # Phase 4-6 callers -- confirms the default is a real, usable repository,
+    # not None.
+    assert toolkit.get_recovery_results_for_incident("anything") == []
+
+
+def test_toolkit_uses_an_explicitly_passed_recovery_result_repository_instance():
+    from app.repositories.recovery_results import RecoveryResultRepository
+
+    log_handler = install()
+    shared_repo = RecoveryResultRepository()
+    try:
+        toolkit = AgentToolkit(
+            device_registry=build_default_fleet(),
+            incident_repository=IncidentRepository(),
+            network_event_store=NetworkEventStore(),
+            telemetry_store=TelemetryStore(),
+            log_handler=log_handler,
+            trace_recorder=AgentTraceRecorder(),
+            recovery_result_repository=shared_repo,
+        )
+        assert toolkit.recovery_result_repository is shared_repo
+    finally:
+        uninstall(log_handler)
+
+
 def test_evaluate_policy_routes_every_scored_action_through_the_real_policy_engine(toolkit):
     # Phase 6 wiring: this used to raise NotImplementedError (Policy Engine
     # not built yet). It now calls the real app/policy_engine/engine.py.

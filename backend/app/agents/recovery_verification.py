@@ -64,9 +64,13 @@ def verify_recovery(
     This function does not itself close or re-open the incident based on the
     result's `recovery_succeeded`/`reinvestigation_required` fields -- Section
     7 step 12's "success closes the incident; failure re-opens it at step 4"
-    is orchestration logic belonging to whatever later phase sequences all
-    five agents (Section 11's own "orchestration mechanism [...] not decided
-    yet"), not something to half-build here as a side effect.
+    is the Recovery Orchestrator's job (L8, `app/recovery/engine.py`,
+    `RecoveryOrchestrator.process_result`, built in Phase 7), the same
+    separation Phase 6 drew between the Response Planning Agent (proposes)
+    and the Policy Engine/Response Orchestrator (decide and act). Call
+    `verify_recovery` for the `RecoveryResult`, then pass that result to
+    `RecoveryOrchestrator.process_result` to actually transition the
+    incident -- this function still does not do that itself.
     """
     prompt = _build_prompt(incident_id, response_id, device_id, toolkit)
     return run_agent_call(
