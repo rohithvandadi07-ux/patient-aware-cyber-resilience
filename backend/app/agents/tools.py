@@ -11,21 +11,28 @@ direct data-layer access either."
 Every function here is read-only and returns only what some earlier layer
 actually recorded (device registry snapshots, captured log records, stored
 network events/telemetry, stored incidents) -- never fabricated evidence.
-`evaluate_policy` is the one exception worth calling out: the actual Policy
-Engine (Section 13) is Phase 6 work with its own dedicated rule-table tests,
-not something to build hastily as a Phase 4 side effect, so it is explicitly
-stubbed with `NotImplementedError` here rather than faked -- see that
-function's docstring.
+`evaluate_policy` used to be the one exception worth calling out: through
+Phase 4 and 5 it was explicitly stubbed with `NotImplementedError`, because
+the actual Policy Engine (Section 13) was Phase 6 work with its own
+dedicated rule-table tests, not something to build hastily as a Phase 4 side
+effect. Phase 6 now exists (`app/policy_engine/`, 100% measured branch
+coverage) and `evaluate_policy` below is real wiring to it -- still
+read-only, still never execution.
 """
 
 from app.iomt_simulator.registry import DeviceRegistry
+from app.policy_engine.engine import PolicyEngine
 from app.repositories.agent_traces import AgentTraceRecorder
 from app.repositories.incidents import IncidentRepository
 from app.repositories.log_capture import CapturedLogRecord, LogCaptureHandler
 from app.repositories.telemetry_events import NetworkEventStore, TelemetryStore
+from app.schemas.agents import ClinicalContext
 from app.schemas.device import DeviceState
+from app.schemas.enums import ResponseActionCategory
 from app.schemas.events import NetworkEvent
 from app.schemas.incident import Incident
+from app.schemas.policy import PolicyDecision
+from app.schemas.risk import RiskScore
 from app.schemas.telemetry import TelemetryReading
 
 
@@ -107,24 +114,33 @@ class AgentToolkit:
         'prior incidents on same device')."""
         return self._incident_repository.list_for_device(device_id)
 
-    def evaluate_policy(self) -> None:
+    def evaluate_policy(
+        self, risk_score: RiskScore, context: ClinicalContext
+    ) -> dict[str, PolicyDecision]:
         """Response Planning Agent's tool: 'would this be auto-approved,'
         read-only, never execution (Section 11).
 
-        NOT IMPLEMENTED: the actual Policy Engine rule table (Section 13's
-        autonomous/conditional/human-approval thresholds) is Phase 6 work,
-        gated on its own dedicated test suite ('100% of its branches covered
-        by tests' per Section 19's Phase 6 gate). Building a quick version of
-        it here, as a side effect of wiring the Response Planning Agent's
-        tool allowlist, would mean the actual safety-routing logic first
-        exists un-reviewed and under-tested -- exactly what Section 19 is
-        structured to prevent. The Response Planning Agent (Phase 4.7) is
-        built to call this and handle the NotImplementedError by omitting a
-        policy pre-check from its reasoning, not by receiving a fabricated
-        answer.
+        Routes every action category actually scored in
+        `risk_score.response_impact` through the real Policy Engine (L6,
+        `app/policy_engine/engine.py`), returning one `PolicyDecision` per
+        action category -- so the agent can see, before committing to a
+        `recommended_action`, which of its candidates would be auto-approved
+        and which would require human approval, and exactly which
+        `policy_rule_id` would produce that outcome for each. This takes
+        `risk_score` as a required parameter (not optional) deliberately:
+        the Policy Engine routes on response_impact, so there is nothing to
+        evaluate without one -- the caller (`response_planning.py`) is
+        responsible for not calling this tool when it has no `RiskScore` yet,
+        and for saying so honestly in its prompt instead.
+
+        Raises `ValueError` (propagated from `PolicyEngine.evaluate_action`)
+        if `risk_score.incident_id` and `context.incident_id` disagree --
+        never silently routes decisions across two different incidents.
         """
-        raise NotImplementedError(
-            "evaluate_policy is not implemented yet -- the Policy Engine (Section 13) "
-            "is Phase 6 work with its own dedicated rule-table tests. See "
-            "app/policy_engine/README.md."
-        )
+        policy_engine = PolicyEngine()
+        return {
+            action_value: policy_engine.evaluate_action(
+                risk_score, context, ResponseActionCategory(action_value)
+            )
+            for action_value in risk_score.response_impact
+        }

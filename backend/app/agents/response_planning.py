@@ -19,11 +19,17 @@ This agent's signature takes `risk_score: RiskScore | None` for that reason --
 prompt says plainly when risk-score data is unavailable rather than silently
 treating "no risk score" the same as "zero risk."
 
-**evaluate_policy note:** `AgentToolkit.evaluate_policy()` raises
-`NotImplementedError` (Policy Engine is Phase 6 work -- see that method's own
-docstring). This agent calls it, catches that specific exception, and notes
-in the prompt that no policy pre-check is available yet -- it does not treat
-the NotImplementedError as "policy says no" or skip the call silently.
+**evaluate_policy note (updated for Phase 6):** `AgentToolkit.evaluate_policy`
+now wires to the real Policy Engine (L6). This agent calls it only when it
+already has a real `risk_score` -- the Policy Engine routes on
+response_impact, so there is nothing to evaluate without one. When
+`risk_score` is `None` (Phase 5 not yet in the loop for this call, or the
+Risk Engine genuinely has nothing yet), the prompt says so honestly rather
+than skipping the note silently or treating "no risk score" as "policy
+check unavailable" for an unrelated reason. When a real `risk_score` is
+available, the prompt is told, per scored candidate action, whether the
+Policy Engine would require human approval and which `policy_rule_id`
+produced that -- a real pre-check, not a placeholder.
 """
 
 import json
@@ -38,18 +44,27 @@ from app.schemas.risk import RiskScore
 _AGENT_NAME = "response_planning"
 
 
-def _try_evaluate_policy(toolkit: AgentToolkit) -> str:
-    try:
-        toolkit.evaluate_policy()
-    except NotImplementedError:
+def _try_evaluate_policy(
+    toolkit: AgentToolkit, risk_score: RiskScore | None, context: ClinicalContext
+) -> str:
+    if risk_score is None:
         return (
-            "not available in this build (Policy Engine is Phase 6 work) -- "
-            "do not assume auto-approval or rejection either way"
+            "not available: no RiskScore provided yet -- do not assume auto-approval or "
+            "rejection either way"
         )
-    # If a future Phase 6 build implements evaluate_policy with a real return
-    # value, this branch starts carrying it instead of only ever hitting the
-    # except above.
-    return "unexpected: evaluate_policy returned without raising"
+    decisions = toolkit.evaluate_policy(risk_score, context)
+    if not decisions:
+        return (
+            "not available: risk_score has no scored candidate actions yet -- do not assume "
+            "auto-approval or rejection either way"
+        )
+    per_action = "; ".join(
+        f"{action}: "
+        f"{'requires human approval' if decision.requires_human_approval else 'autonomous OK'} "
+        f"(rule={decision.policy_rule_id})"
+        for action, decision in sorted(decisions.items())
+    )
+    return f"Policy Engine pre-check per scored candidate action -- {per_action}"
 
 
 def _build_prompt(
@@ -92,7 +107,7 @@ def plan_response(
     `RESPONSE_PLANNING_STALLED` if the LLM cannot produce a valid
     `ProposedResponse` after one retry.
     """
-    policy_note = _try_evaluate_policy(toolkit)
+    policy_note = _try_evaluate_policy(toolkit, risk_score, context)
     prompt = _build_prompt(threat, context, risk_score, policy_note)
     return run_agent_call(
         client=client,

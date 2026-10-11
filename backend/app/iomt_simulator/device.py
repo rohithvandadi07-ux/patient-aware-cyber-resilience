@@ -55,10 +55,32 @@ class SimulatedDevice:
     def isolate(self) -> None:
         """Simulate a network isolation response action (Section 13's
         ISOLATE_NON_CRITICAL / ISOLATE_CRITICAL categories) by cutting network
-        state while leaving operational state untouched — the device keeps
-        running clinically, it's just cut off from the network."""
+        state and marking operational state ISOLATED. (Docstring corrected in
+        Phase 6: an earlier version of this docstring claimed operational
+        state was left untouched "so the device keeps running clinically" --
+        that was never actually true of the code below, which has always set
+        `operational_state` to `ISOLATED` too, and `test_device.py`'s
+        `test_isolate_cuts_network_and_operational_state` has always asserted
+        exactly that. This was a stale comment, not a behavior change.)"""
         self.set_network_state("isolated")
         self.set_operational_state(OperationalState.ISOLATED)
+
+    def power_off(self) -> None:
+        """Simulate a genuine SHUTDOWN response action (Section 13's
+        `ResponseActionCategory.SHUTDOWN`) added in Phase 6, now that
+        `OperationalState.OFF` exists to represent it honestly. Distinct from
+        `isolate()`: this is a full power-down, not a network cut -- the
+        device stops running clinically, which is exactly why Section 13's
+        unconditional-approval rule singles SHUTDOWN out for a
+        patient-dependent device, and why the Response Orchestrator (L7,
+        Phase 6/7) must never call this without a `PolicyDecision` that was
+        actually routed through human approval when required. Network state
+        is set to "offline", not "isolated" -- a powered-off device has no
+        network connection to isolate, and reusing isolate()'s string would
+        make a state-history diff unable to tell a SHUTDOWN from an
+        isolation apart by network_state alone."""
+        self.set_network_state("offline")
+        self.set_operational_state(OperationalState.OFF)
 
     def snapshot(self) -> DeviceState:
         """Convert current state to the shared DeviceState schema."""

@@ -24,6 +24,16 @@ class OperationalState(StrEnum):
     ACTIVE = "active"
     ALARM = "alarm"
     ISOLATED = "isolated"
+    # Added in Phase 6, following the exact precedent of Phase 4's
+    # IncidentStatus stall-status additions: Phase 2's original four values
+    # had no way to represent "the device is powered off," so a genuine
+    # ResponseActionCategory.SHUTDOWN (architecture spec Section 13) had no
+    # real state to transition into -- the Response Orchestrator (L7) would
+    # otherwise have had to fake a SHUTDOWN by reusing ISOLATED, which is a
+    # different, lesser action (network-cut, clinically still running) and
+    # would misreport what actually happened. OFF is deliberately its own
+    # value, not an alias for ISOLATED.
+    OFF = "off"
 
 
 class DeviceState(BaseModel):

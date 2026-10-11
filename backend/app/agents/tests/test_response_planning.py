@@ -85,13 +85,55 @@ def test_plan_response_returns_proposal_on_success(toolkit):
     assert proposal.recommended_action == ResponseActionCategory.ISOLATE_NON_CRITICAL
 
 
-def test_plan_response_notes_policy_engine_unavailable_in_prompt(toolkit):
+def test_plan_response_notes_no_risk_score_unavailable_in_prompt(toolkit):
+    # No risk_score was passed -- the Policy Engine has nothing to route on,
+    # so the prompt must say so honestly rather than fabricating a check.
     toolkit.incident_repository.create("incident-1", device_id="ventilator-01")
     client = MockLLMClient(responses=[_valid_proposal_json()])
 
     plan_response(client, toolkit, _threat(), _context())
 
-    assert "Phase 6 work" in client.calls[0]
+    assert "not available: no RiskScore provided yet" in client.calls[0]
+
+
+def test_plan_response_notes_no_scored_actions_yet_when_risk_score_response_impact_is_empty(toolkit):
+    # A RiskScore technically exists but scored nothing (candidate_responses
+    # was empty at risk-engine time) -- the prompt must distinguish this from
+    # "no RiskScore at all" and still avoid assuming either routing outcome.
+    toolkit.incident_repository.create("incident-1", device_id="ventilator-01")
+    client = MockLLMClient(responses=[_valid_proposal_json()])
+    risk_score = RiskScore(
+        incident_id="incident-1",
+        cyber_risk=0.1,
+        clinical_risk=0.1,
+        response_impact={},
+        explanation="test",
+    )
+
+    plan_response(client, toolkit, _threat(), _context(), risk_score=risk_score)
+
+    assert "not available: risk_score has no scored candidate actions yet" in client.calls[0]
+
+
+def test_plan_response_includes_real_policy_pre_check_in_prompt_when_risk_score_provided(toolkit):
+    # With a real risk_score, the Phase 6 Policy Engine is wired in for real
+    # -- the prompt must carry its actual per-action routing decision, not a
+    # stubbed "Phase 6 work" placeholder.
+    toolkit.incident_repository.create("incident-1", device_id="ventilator-01")
+    client = MockLLMClient(responses=[_valid_proposal_json()])
+    risk_score = RiskScore(
+        incident_id="incident-1",
+        cyber_risk=0.8,
+        clinical_risk=0.9,
+        response_impact={"isolate_non_critical": ImpactLevel.LOW},
+        explanation="High clinical risk due to patient dependency.",
+    )
+
+    plan_response(client, toolkit, _threat(), _context(), risk_score=risk_score)
+
+    assert "isolate_non_critical" in client.calls[0]
+    assert "autonomous OK" in client.calls[0]
+    assert "rule=autonomous_low_impact" in client.calls[0]
 
 
 def test_plan_response_with_no_risk_score_says_so_rather_than_fabricating_one(toolkit):

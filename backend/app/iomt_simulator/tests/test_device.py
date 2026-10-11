@@ -28,6 +28,20 @@ def test_isolate_cuts_network_and_operational_state():
     assert pump.operational_state == OperationalState.ISOLATED
 
 
+def test_power_off_sets_off_state_and_offline_network_distinct_from_isolate():
+    # Phase 6: OperationalState.OFF is its own value, and power_off()'s
+    # network_state ("offline") must be distinguishable from isolate()'s
+    # ("isolated") -- a SHUTDOWN and an isolation must never look identical
+    # in device state.
+    vent = Ventilator(device_id="vent-01", criticality="high", patient_dependency=True)
+
+    vent.power_off()
+
+    assert vent.operational_state == OperationalState.OFF
+    assert vent.network_state == "offline"
+    assert vent.operational_state != OperationalState.ISOLATED
+
+
 def test_state_history_records_transitions():
     ecg = EcgMonitor(device_id="ecg-01", criticality="medium", patient_dependency=False)
     assert ecg._state_history == []

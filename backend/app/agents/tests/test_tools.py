@@ -8,7 +8,10 @@ from app.repositories.agent_traces import AgentTraceRecorder
 from app.repositories.incidents import IncidentRepository
 from app.repositories.log_capture import install, uninstall
 from app.repositories.telemetry_events import NetworkEventStore, TelemetryStore
+from app.schemas.agents import ClinicalContext
+from app.schemas.enums import DeviceCriticality, ImpactLevel, ResponseActionCategory
 from app.schemas.events import NetworkEvent
+from app.schemas.risk import RiskScore
 
 _NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -59,9 +62,48 @@ def test_get_prior_incidents_for_device_reflects_repository_state(toolkit):
     assert results[0].incident_id == "incident-1"
 
 
-def test_evaluate_policy_raises_not_implemented(toolkit):
-    with pytest.raises(NotImplementedError, match="Phase 6"):
-        toolkit.evaluate_policy()
+def test_evaluate_policy_routes_every_scored_action_through_the_real_policy_engine(toolkit):
+    # Phase 6 wiring: this used to raise NotImplementedError (Policy Engine
+    # not built yet). It now calls the real app/policy_engine/engine.py.
+    context = ClinicalContext(
+        incident_id="incident-1",
+        device_criticality=DeviceCriticality.LOW,
+        patient_dependency=False,
+        clinical_impact_level=ImpactLevel.LOW,
+        safety_constraints=[],
+    )
+    risk_score = RiskScore(
+        incident_id="incident-1",
+        cyber_risk=0.4,
+        clinical_risk=0.2,
+        response_impact={
+            "isolate_non_critical": ImpactLevel.LOW,
+            "shutdown": ImpactLevel.HIGH,
+        },
+        explanation="test",
+    )
+
+    decisions = toolkit.evaluate_policy(risk_score, context)
+
+    assert set(decisions) == {"isolate_non_critical", "shutdown"}
+    assert decisions["isolate_non_critical"].requires_human_approval is False
+    assert decisions["shutdown"].requires_human_approval is True
+    assert decisions["shutdown"].chosen_action == ResponseActionCategory.SHUTDOWN
+
+
+def test_evaluate_policy_returns_empty_dict_when_nothing_has_been_scored(toolkit):
+    context = ClinicalContext(
+        incident_id="incident-1",
+        device_criticality=DeviceCriticality.LOW,
+        patient_dependency=False,
+        clinical_impact_level=ImpactLevel.LOW,
+        safety_constraints=[],
+    )
+    risk_score = RiskScore(
+        incident_id="incident-1", cyber_risk=0.1, clinical_risk=0.1, response_impact={}, explanation="test"
+    )
+
+    assert toolkit.evaluate_policy(risk_score, context) == {}
 
 
 def test_get_network_events_reflects_store_contents(toolkit):
