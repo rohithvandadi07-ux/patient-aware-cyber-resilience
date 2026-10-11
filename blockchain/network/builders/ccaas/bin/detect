@@ -1,0 +1,17 @@
+#!/bin/bash
+# External builder: detect.
+#
+# Called by the peer as: detect <CHAINCODE_SOURCE_DIR> <CHAINCODE_METADATA_DIR>
+# Exit 0 to claim this chaincode package, non-zero to decline it (letting the
+# peer try the next configured builder, if any).
+#
+# This builder claims any package whose metadata.json declares
+# type "external-node" -- the convention this project uses for a Node.js
+# chaincode launched without Docker (see network/README.md, Adaptation 3).
+set -euo pipefail
+METADATA_DIR="$2"
+
+if [ "$(jq -r '.type' "$METADATA_DIR/metadata.json" 2>/dev/null)" = "external-node" ]; then
+    exit 0
+fi
+exit 1

@@ -1,0 +1,45 @@
+# cryptogen material for the PACR network: one orderer org (Orderer) plus
+# two peer orgs (HospitalOrg, SecurityOpsOrg), one node each.
+#
+# SANS is not optional here. cryptogen's default certs carry only a
+# hostname SAN (e.g. "orderer1.orderer.pacr.local"). This network addresses
+# every node by literal 127.0.0.1 (see configtx.yaml and the run-*.sh
+# scripts for why), and a cert with no IP SAN fails TLS validation for a
+# connection to a literal IP ("x509: cannot validate certificate for
+# 127.0.0.1 because it doesn't contain any IP SANs"). Adding the SANS
+# entries below bakes an IP SAN into every generated cert, so literal-IP
+# addressing works end-to-end. See network/README.md ("Adaptation 1") for
+# the full story, including why a custom hostname is not an alternative
+# fix in this environment.
+
+OrdererOrgs:
+  - Name: Orderer
+    Domain: orderer.pacr.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer1
+        SANS:
+          - "127.0.0.1"
+          - "localhost"
+
+PeerOrgs:
+  - Name: HospitalOrg
+    Domain: hospital.pacr.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - "127.0.0.1"
+        - "localhost"
+    Users:
+      Count: 1
+  - Name: SecurityOpsOrg
+    Domain: securityops.pacr.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - "127.0.0.1"
+        - "localhost"
+    Users:
+      Count: 1

@@ -82,3 +82,30 @@ class IncidentStatus(StrEnum):
     CONTEXT_STALLED = "context_stalled"
     RESPONSE_PLANNING_STALLED = "response_planning_stalled"
     RECOVERY_VERIFICATION_STALLED = "recovery_verification_stalled"
+
+
+class OutboxRecordType(StrEnum):
+    """Which of the five chaincode *write* operations (architecture spec
+    Section 14) an outbox entry's payload is bound for. `verifyEvidence` is
+    a read-only query, not a write, so it has no outbox entry type --
+    nothing is ever queued to verify evidence; that's called directly."""
+
+    INCIDENT = "incident"
+    DECISION = "decision"
+    APPROVAL = "approval"
+    RESPONSE = "response"
+    RECOVERY = "recovery"
+
+
+class OutboxStatus(StrEnum):
+    """Architecture spec Section 14: an off-chain record's `chain_tx_id`
+    is nullable, and `IS NULL` means "not yet committed" -- a real,
+    visible state, never silently hidden. PENDING is that nullable state;
+    CONFIRMED is once `chain_tx_id` is populated; FAILED is a
+    non-retryable chaincode rejection (bad input, or a business rule like
+    "incident already recorded") rather than a transient endorsement
+    timing issue, which the outbox worker retries instead of failing."""
+
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    FAILED = "failed"

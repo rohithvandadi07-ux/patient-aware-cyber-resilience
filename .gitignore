@@ -41,6 +41,12 @@ experiments/models/*.onnx
 blockchain/network/organizations/
 blockchain/network/channel-artifacts/
 blockchain/network/wallet/
+blockchain/network/crypto-config/
+blockchain/network/run/
+blockchain/network/logs/
+blockchain/network/peercfg/core.yaml
+blockchain/chaincode/node_modules/
+blockchain/chaincode/coverage/
 
 # --- OS / editor ---
 .DS_Store

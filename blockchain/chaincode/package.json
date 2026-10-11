@@ -1,0 +1,16 @@
+{
+  "name": "pacr-provenance-chaincode",
+  "version": "1.0.0",
+  "description": "Hyperledger Fabric chaincode for the Patient-Aware Cyber Resilience provenance ledger (architecture spec Section 14): recordIncident, recordDecision, recordApproval, recordResponse, recordRecovery, verifyEvidence. Stores hashes and structured metadata only -- never raw telemetry, logs, or patient identifiers.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.5.8",
+    "fabric-shim": "^2.5.8"
+  }
+}

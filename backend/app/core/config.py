@@ -42,6 +42,18 @@ class Settings(BaseSettings):
         "Postgres instance.",
     )
 
+    # --- Blockchain (L9, architecture spec Section 14) ---
+    fabric_network_scripts_dir: str = Field(
+        default="../blockchain/network/scripts",
+        description="Directory containing invoke.sh/query.sh -- see blockchain/network/README.md. "
+        "SubprocessFabricClient shells out to these rather than using a Fabric SDK binding "
+        "(none exists in this backend yet).",
+    )
+    fabric_chaincode_name: str = Field(
+        default="provenance",
+        description="Chaincode name as committed via blockchain/network/scripts/deploy-chaincode.sh.",
+    )
+
     # --- Logging ---
     log_level: str = Field(default="INFO", description="DEBUG | INFO | WARNING | ERROR | CRITICAL")
     log_json: bool = Field(

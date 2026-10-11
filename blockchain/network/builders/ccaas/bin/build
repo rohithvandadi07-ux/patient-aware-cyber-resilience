@@ -1,0 +1,21 @@
+#!/bin/bash
+# External builder: build.
+#
+# Called by the peer as:
+#   build <CHAINCODE_SOURCE_DIR> <CHAINCODE_METADATA_DIR> <BUILD_OUTPUT_DIR>
+#
+# CHAINCODE_SOURCE_DIR is the extracted contents of the package's
+# code.tar.gz -- the chaincode's package.json, source files, and
+# (deliberately) no node_modules, since installing them is this builder's
+# job, not something baked into the package. Copy the source into the
+# build output directory and install production dependencies there so the
+# result is self-contained; `run` execs directly out of this directory.
+set -euo pipefail
+SOURCE_DIR="$1"
+BUILD_OUTPUT_DIR="$3"
+
+cp -R "$SOURCE_DIR"/. "$BUILD_OUTPUT_DIR"/
+
+cd "$BUILD_OUTPUT_DIR"
+npm ci --omit=dev --no-audit --no-fund >/tmp/pacr-ccaas-build.log 2>&1 \
+    || npm install --omit=dev --no-audit --no-fund >>/tmp/pacr-ccaas-build.log 2>&1

@@ -1,0 +1,150 @@
+# configtxgen profile for the PACR channel.
+#
+# Every address below is a literal 127.0.0.1, never a hostname. That is
+# deliberate (not a shortcut): paired with the IP SANs added in
+# crypto-config.yaml, it satisfies TLS SAN validation AND keeps every
+# connection inside this sandbox's outbound-proxy noProxy list, which does
+# not recognize custom /etc/hosts entries as local. See network/README.md
+# ("Adaptation 1") before changing any address in this file to a hostname.
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: crypto-config/ordererOrganizations/orderer.pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - 127.0.0.1:7050
+
+  - &HospitalOrg
+    Name: HospitalOrg
+    ID: HospitalMSP
+    MSPDir: crypto-config/peerOrganizations/hospital.pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin', 'HospitalMSP.peer', 'HospitalMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin', 'HospitalMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('HospitalMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('HospitalMSP.peer')"
+
+  - &SecurityOpsOrg
+    Name: SecurityOpsOrg
+    ID: SecurityOpsMSP
+    MSPDir: crypto-config/peerOrganizations/securityops.pacr.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.admin', 'SecurityOpsMSP.peer', 'SecurityOpsMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.admin', 'SecurityOpsMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('SecurityOpsMSP.peer')"
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - 127.0.0.1:7050
+  EtcdRaft:
+    Consenters:
+      - Host: 127.0.0.1
+        Port: 7050
+        ClientTLSCert: crypto-config/ordererOrganizations/orderer.pacr.local/orderers/orderer1.orderer.pacr.local/tls/server.crt
+        ServerTLSCert: crypto-config/ordererOrganizations/orderer.pacr.local/orderers/orderer1.orderer.pacr.local/tls/server.crt
+  BatchTimeout: 1s
+  BatchSize:
+    MaxMessageCount: 50
+    AbsoluteMaxBytes: 10 MB
+    PreferredMaxBytes: 2 MB
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  PACRChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - <<: *HospitalOrg
+        - <<: *SecurityOpsOrg

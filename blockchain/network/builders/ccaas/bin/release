@@ -1,0 +1,11 @@
+#!/bin/bash
+# External builder: release.
+#
+# Called by the peer as: release <BUILD_OUTPUT_DIR> <RELEASE_OUTPUT_DIR>
+#
+# Only relevant for artifacts the peer's own runtime consumes directly out
+# of RELEASE_OUTPUT_DIR (e.g. CouchDB index definitions). This project's
+# chaincode is launched by `run`, which is handed BUILD_OUTPUT_DIR directly
+# (see run), so there's nothing to propagate here.
+set -euo pipefail
+exit 0

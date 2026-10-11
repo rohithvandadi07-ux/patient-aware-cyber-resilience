@@ -1,0 +1,62 @@
+#!/bin/bash
+# External builder: run.
+#
+# Called by the peer as: run <BUILD_OUTPUT_DIR> <RUN_METADATA_DIR>
+#
+# This project does NOT use CCaaS's peer-dials-chaincode model (the shim's
+# `server` mode / fabric-shim/lib/server.js ChaincodeServer). That direction
+# was spiked and abandoned: the peer never attempted to dial the external
+# chaincode server, with no diagnostic signal despite extensive
+# investigation (see network/README.md, Adaptation 3, for the full story).
+# Instead this launches the chaincode as a plain, long-lived Node process
+# that DIALS OUT to this peer's own chaincode listen address and registers
+# -- the same direction already proven reliable for every Fabric system
+# chaincode (_lifecycle, qscc, cscc, lscc) -- just started by this script
+# instead of by Docker.
+#
+# Launch config is NOT delivered via CORE_PEER_ADDRESS / CORE_CHAINCODE_ID_NAME
+# environment variables for an external-builder run (those are empty here --
+# they only apply to a Docker-launched container). Fabric instead writes a
+# chaincode.json file into RUN_METADATA_DIR ($2) containing:
+#   chaincode_id   - the install/approve/commit package ID for this chaincode
+#   peer_address   - this peer's own chaincode listen address (e.g. 127.0.0.1:7052)
+#   client_cert / client_key / root_cert - mTLS material, because the peer
+#                    enforces mutual TLS on its chaincode listener
+#   mspid          - this peer org's MSP ID
+set -euo pipefail
+
+BUILD_OUTPUT_DIR="$1"
+RUN_METADATA_DIR="$2"
+CCJSON="$RUN_METADATA_DIR/chaincode.json"
+
+CHAINCODE_ID=$(jq -r '.chaincode_id' "$CCJSON")
+PEER_ADDR=$(jq -r '.peer_address' "$CCJSON")
+
+TLSDIR=$(mktemp -d)
+# Note: no cleanup trap for TLSDIR -- this script execs into the long-lived
+# node process below, which replaces the shell and never returns, so an
+# EXIT trap here would never fire. TLSDIR lives for the lifetime of the
+# chaincode process and is reaped with it; a prototype-scale leak of a few
+# small temp files per chaincode launch is accepted here.
+
+# fabric-shim's Endpoint class (lib/handler.js) does:
+#   Buffer.from(opts.key, 'base64') / Buffer.from(opts.cert, 'base64')
+# on the CONTENTS of the files at CORE_TLS_CLIENT_KEY_PATH / CORE_TLS_CLIENT_CERT_PATH,
+# then hands the decoded bytes straight to Node's TLS layer, which requires
+# those bytes to BE PEM text. So the files must contain base64 of the WHOLE
+# armored PEM (headers, newlines and all) -- double-encoded -- not raw PEM
+# and not base64 of the bare DER body. The root cert (opts.pem) is read with
+# no such decoding, so it stays as plain PEM text.
+jq -r '.client_cert' "$CCJSON" | base64 -w0 > "$TLSDIR/client.crt"
+jq -r '.client_key'  "$CCJSON" | base64 -w0 > "$TLSDIR/client.key"
+jq -r '.root_cert'   "$CCJSON" > "$TLSDIR/root.crt"
+
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_TLS_ROOTCERT_FILE="$TLSDIR/root.crt"
+export CORE_TLS_CLIENT_KEY_PATH="$TLSDIR/client.key"
+export CORE_TLS_CLIENT_CERT_PATH="$TLSDIR/client.crt"
+
+exec node "$BUILD_OUTPUT_DIR/node_modules/.bin/fabric-chaincode-node" start \
+    --peer.address="$PEER_ADDR" \
+    --chaincode-id-name="$CHAINCODE_ID" \
+    --module-path="$BUILD_OUTPUT_DIR"
