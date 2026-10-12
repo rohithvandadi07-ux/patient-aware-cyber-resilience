@@ -29,22 +29,52 @@ it is one closed-loop platform combining:
 
 ## Status
 
-This project is under active development, built in phases. See
-[`docs/architecture.md`](docs/architecture.md) for the full architecture
-specification, the decisions made and why, and the current development phase.
+This project is under active development, built in 16 phases (0–15). See
+[`docs/architecture.md`](docs/architecture.md) Section 19 for the full phase
+plan and gates, and the Claude Project doc `claude/architecture-decisions.md`
+for phase-by-phase decisions. As of this commit:
 
-**Phase 1 (foundation) is the current state of this repository.** No detection
-model, agent, risk engine, policy engine, blockchain integration, or frontend is
-implemented yet — those arrive in later phases. Nothing in this README or in
-`docs/` claims otherwise; if a component isn't listed as implemented in
+- **Phases 0–9 (architecture through backend integration): complete.** A
+  three-device IoMT simulator with scripted attack scenarios; a trained
+  baseline detector (Random Forest/XGBoost) against the synthetic stand-in
+  dataset (`datasets/LICENSE_NOTES.md` — real CICIoMT2024 data has not been
+  used); all five agents (`app/agents/`), schema-validated and unit-tested
+  against `MockLLMClient` — no live LLM backend is wired in yet, a
+  deliberate, still-open decision, not a gap this README hides; the
+  rule-based dual-risk engine; the deterministic policy engine and response
+  orchestrator; the recovery orchestrator; Hyperledger Fabric provenance
+  (`test-network` + chaincode); and all 12 resource routers behind the
+  FastAPI backend.
+- **Phase 10 (SOC dashboard): complete.** `frontend/` is a real
+  React/TypeScript/Vite dashboard where one incident's full lifecycle is
+  viewable: detection status, a dual cyber-risk/clinical-risk panel (equal
+  visual weight, per Section 16 — never cyber-risk-as-headline), real
+  agent-activity data (or an honest "not run" state, never fabricated),
+  evidence, the proposed/executed response (including a real
+  human-approval flow when the policy engine requires one), recovery
+  verification, and the blockchain audit trail.
+  `backend/tests/test_lifecycle_integration.py` and
+  `frontend/src/routes/IncidentDetail.fullLifecycle.test.tsx` each drive
+  one real incident through this entire chain end to end and assert on
+  the real result.
+- **Not yet built:** Phases 11–15 — end-to-end integration exercised
+  through the real UI (not just backend tests), a security hardening pass,
+  experiments/evaluation with real reported numbers, a Dockerized
+  full-stack deployment, and a final documentation pass. There is still no
+  automatic multi-agent orchestrator; the five agents are sequenced
+  manually wherever they're exercised (tests, the lifecycle integration
+  test above), standing in for an orchestration decision the architecture
+  doc deliberately leaves open.
+
+If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.
 
 ## Repository layout
 
 ```
 backend/        FastAPI application — all server-side layers live under app/
-frontend/       React/TypeScript SOC dashboard (not yet built)
-blockchain/     Hyperledger Fabric network config + chaincode (not yet built)
+frontend/       React/TypeScript SOC dashboard (Vite; see frontend/README.md)
+blockchain/     Hyperledger Fabric network config + chaincode
 datasets/       Dataset download scripts and license notes (no data committed)
 experiments/    Baseline/ablation run configs and trained model artifacts
 evaluation/     Metric computation and report generation
@@ -69,6 +99,21 @@ cp ../.env.example ../.env   # adjust as needed
 pytest
 uvicorn app.main:app --reload
 ```
+
+The SOC dashboard (`frontend/`) talks to this backend over HTTP from its own
+origin, so run the backend first, then:
+
+```bash
+cd frontend
+npm install
+npm run test   # Vitest + React Testing Library
+npm run build  # tsc -b && vite build
+npm run dev    # Vite dev server, default http://localhost:5173
+```
+
+The backend's default CORS allowlist (`Settings.cors_allowed_origins`)
+already includes the Vite dev server's default origin — see
+`backend/app/core/README.md`.
 
 Or via Docker Compose (backend + Postgres/TimescaleDB):
 

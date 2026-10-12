@@ -9,6 +9,7 @@ editing a growing `main.py`.
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
@@ -37,10 +38,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         debug=settings.debug,
     )
 
+    _register_middleware(app, settings)
     _register_state(app, settings)
     _register_routers(app)
 
     return app
+
+
+def _register_middleware(app: FastAPI, settings: Settings) -> None:
+    """Phase 10: the SOC dashboard (`frontend/`) runs on its own origin (the
+    Vite dev server, and a separate container in the Docker deployment
+    Section 14 describes), so the browser enforces CORS against this API
+    regardless of how much this backend 'trusts' the frontend. Explicit
+    origin allowlist from `Settings.cors_allowed_origins` -- never a
+    wildcard, and credentials are not allowed cross-origin (this API has no
+    cookie-based auth to carry; Section 15 notes auth itself is still only
+    designed-for, not implemented).
+    """
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allowed_origins,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 def _register_state(app: FastAPI, settings: Settings) -> None:

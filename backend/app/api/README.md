@@ -50,6 +50,21 @@ New in Phase 9, used across several of the routers above: `app/blockchain/hashin
 `*Provenance` schema before Phase 9 was a literal placeholder string in a test, never computed from a
 real object).
 
+## Phase 10 addition: one real incident through all of this, end to end
+
+`backend/tests/test_lifecycle_integration.py` drives one real incident through
+every router above in sequence over the real HTTP API — detection, the five
+agents (called directly, not through a router; see that test's own docstring
+for why and for its disclosed use of `MockLLMClient`), risk assessment, policy
+decision, response execution, recovery, and blockchain audit draining — and
+asserts the incident actually reaches `resolved` with a fully confirmed audit
+trail. This doesn't change anything documented above (still no run-an-agent
+endpoint, still no orchestrator); it's the test that proves the routers above
+actually chain together correctly for one incident, which no single router's
+own test suite can show on its own. The Phase 10 SOC dashboard
+(`frontend/src/routes/IncidentDetail.tsx`) is built to render exactly this
+sequence's data, panel by panel.
+
 ## What's still explicitly NOT here
 
 Authentication/authorization (designed-for, not implemented — Section 15 names this Phase 9 too, but

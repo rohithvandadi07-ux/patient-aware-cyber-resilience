@@ -6,9 +6,10 @@ local development only) and is expected to be overridden via environment variabl
 or a `.env` file in real deployments (see `.env.example` at the repo root).
 """
 
+import json
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +35,15 @@ class Settings(BaseSettings):
     # --- API ---
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000)
+    cors_allowed_origins: list[str] = Field(
+        default=["http://localhost:5173", "http://127.0.0.1:5173"],
+        description="Origins the SOC dashboard (Phase 10, Vite dev server default port 5173) may "
+        "call this API from. Needed because the frontend and backend run as separate origins in "
+        "local dev (and, per Section 14's Docker-based deployment, in docker-compose too) -- a "
+        "browser enforces CORS regardless of whether this backend 'trusts' the frontend. Never "
+        "'*' -- an explicit, reviewable list, overridable via the CORS_ALLOWED_ORIGINS env var "
+        "(comma-separated, or a JSON array) for a real deployment's actual frontend origin.",
+    )
 
     # --- Database (PostgreSQL + TimescaleDB extension) ---
     database_url: str = Field(
@@ -71,6 +81,24 @@ class Settings(BaseSettings):
         description="Emit structured JSON logs. Useful in CI/production; human-readable in local "
         "dev by default.",
     )
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _parse_cors_allowed_origins(cls, value: object) -> object:
+        """`pydantic-settings` only parses a `list[str]` env var as JSON by
+        default -- a plain `CORS_ALLOWED_ORIGINS=http://a,http://b` would
+        otherwise fail to load rather than split, which is the friendlier,
+        more commonly expected `.env` shape for a list of origins. Accepts
+        either: a JSON array string parses as JSON; anything else is split
+        on commas and stripped. A non-string value (the Python-level
+        default list, or a value already parsed by a caller) passes through
+        unchanged."""
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        if stripped.startswith("["):
+            return json.loads(stripped)
+        return [origin.strip() for origin in stripped.split(",") if origin.strip()]
 
     @property
     def is_production(self) -> bool:

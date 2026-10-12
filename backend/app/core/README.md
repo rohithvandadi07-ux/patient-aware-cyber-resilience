@@ -14,3 +14,13 @@ device registry), plus a `FabricClient` (mock or subprocess, per
 `Settings.fabric_client_mode` — see `config.py`'s Phase 9 addition) and an
 `OutboxWorker`; `_register_routers` registers all 12 of Section 15's
 resource routers. See `app/api/README.md` for what each router actually does.
+
+Phase 10 addition: `_register_middleware` wires `CORSMiddleware` with an
+explicit origin allowlist from `Settings.cors_allowed_origins` (default
+`["http://localhost:5173", "http://127.0.0.1:5173"]`, the Vite dev server —
+never a wildcard; credentials are not allowed cross-origin since this API
+has no cookie-based auth to carry). The SOC dashboard (`frontend/`) runs on
+its own origin, so this is required for the browser to let it call this API
+at all, not an optional hardening step — see `tests/test_cors.py`.
+`cors_allowed_origins` accepts either a JSON array or a comma-separated
+string from the environment (`CORS_ALLOWED_ORIGINS`).
