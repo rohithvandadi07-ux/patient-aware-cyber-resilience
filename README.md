@@ -108,15 +108,34 @@ for phase-by-phase decisions. As of this commit:
   detectors measured zero false positives), not a hidden gap; see the
   report for why. The fuller five-system/seven-ablation comparison Section
   18 describes remains for later.
-- **Not yet built:** Phases 14–15 — a Dockerized full-stack deployment and a
-  final documentation pass; the fuller five-system/seven-ablation
-  comparison beyond Phase 13's gate. There is still no automatic
-  multi-agent orchestrator; the five agents are sequenced manually
-  wherever they're exercised (tests, the lifecycle integration test above,
-  the Phase 11 E2E seeding, Phase 13's evaluation harness), standing in for
-  an orchestration decision the architecture doc deliberately leaves open.
-  There is also still no rate limiting or authentication layer (disclosed
-  known gaps, Phase 12 security checklist).
+- **Phase 14 (Dockerization + deployment): written, config-validated, not
+  run-verified here.** `docker-compose.yml` now brings up backend +
+  frontend (served via nginx, not the Vite dev server) + Postgres in one
+  `docker compose up` — Section 19's literal gate, for the three services
+  this project controls. Hyperledger Fabric stays outside compose,
+  deliberately: that's Phase 8's own locked decision (its native-binary
+  bring-up, `blockchain/network/`, is unchanged), not something this
+  phase overlooked. The honest limit on this phase: this project's
+  development sandbox blocks every container registry tried (Docker Hub,
+  ghcr.io, mcr.microsoft.com, gcr.io all returned 403 Forbidden — the same
+  block Phase 8 found for Fabric, now confirmed for every other base image
+  too, including the pre-existing `backend` Dockerfile's own
+  `python:3.12-slim`), so nothing here has actually run `docker compose up`
+  to completion anywhere in this project's history. `docker compose
+  config` parses and interpolates the file cleanly, which needs no image
+  pull; an actual build/run needs an environment with registry access. See
+  the "Docker" section below for the full disclosure.
+- **Not yet built:** Phase 15 — a final documentation pass (checking every
+  claim in `docs/` against what's actually implemented and tested); the
+  fuller five-system/seven-ablation comparison beyond Phase 13's gate; an
+  actual registry-access build/run verification of Phase 14's Docker
+  setup. There is still no automatic multi-agent orchestrator; the five
+  agents are sequenced manually wherever they're exercised (tests, the
+  lifecycle integration test above, the Phase 11 E2E seeding, Phase 13's
+  evaluation harness), standing in for an orchestration decision the
+  architecture doc deliberately leaves open. There is also still no rate
+  limiting or authentication layer (disclosed known gaps, Phase 12
+  security checklist).
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.
@@ -177,11 +196,43 @@ pytest -c ../tests/pytest.ini ../tests/e2e
 
 See `tests/README.md` for what this suite actually proves and what it needs installed.
 
-Or via Docker Compose (backend + Postgres/TimescaleDB):
+### Docker
 
 ```bash
-docker compose up
+cp .env.example .env   # adjust as needed, especially API_PORT/FRONTEND_PORT if either is taken
+docker compose up --build
 ```
+
+Brings up backend + frontend (served via nginx, not the Vite dev server) +
+Postgres/TimescaleDB as three services from one `docker-compose.yml` —
+Section 19's Phase 14 gate. The dashboard is then at
+`http://localhost:${FRONTEND_PORT:-5173}`, calling the backend at
+`http://localhost:${API_PORT:-8000}`; `docker-compose.yml` wires
+`CORS_ALLOWED_ORIGINS` and the frontend's build-time `VITE_API_BASE_URL`
+to match each other automatically if you change either port.
+
+**Hyperledger Fabric is deliberately not a compose service.** This is
+Phase 8's own locked decision, not something Phase 14 overlooked: bring
+up `blockchain/network/` separately, by its own README, using the native
+binaries that decision settled on.
+
+**Disclosure that matters more than the above:** none of this has been
+build- or run-verified in this project's development sandbox. That
+sandbox's network policy blocks every container registry tried against
+it — Docker Hub, ghcr.io, mcr.microsoft.com, and gcr.io all returned 403
+Forbidden, confirmed by actually trying to pull `python:3.12-slim` to
+build the existing `backend` image, which is also how Phase 8 originally
+found this same block for Fabric. So no base image in this file
+(`timescale/timescaledb`, `python:3.12-slim`, `node:22-alpine`,
+`nginx:1.27-alpine`) can be pulled there, for any service, and nothing
+here has ever actually run `docker compose up` to completion. What *has*
+been checked, without needing to pull anything: `docker compose config`
+parses and interpolates this file cleanly (verified from a clean clone,
+with real variable substitution — not just "looks right"). Verify an
+actual `docker compose up --build` in an environment with registry
+access before treating this gate as more than "written and
+config-validated" — see `docker-compose.yml`'s own top comment for the
+same disclosure in place.
 
 ## License
 

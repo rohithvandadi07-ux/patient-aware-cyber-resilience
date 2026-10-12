@@ -33,6 +33,18 @@ end to end for a fully resolved incident.
 - `npm run lint` — `oxlint` (the scaffolder's default; faster than ESLint, same
   category of checks).
 
+## Docker (Phase 14)
+
+`Dockerfile` is a two-stage build: `npm run build`'s real output served by
+nginx (`nginx.conf` adds the one thing a static file server needs over a
+dev server — SPA fallback for React Router's client-side routes). Normally
+built via the root `docker-compose.yml`, not standalone, since
+`VITE_API_BASE_URL` is a build arg that file sets to match the backend's
+published port. Not build-verified in this project's development sandbox
+— see the root `README.md`'s "Docker" section for why (every container
+registry this sandbox tried is blocked) and what's actually been checked
+instead (`docker compose config`'s syntax validation).
+
 ## Layout
 
 - `src/api/types.ts` — hand-maintained TypeScript mirror of every backend

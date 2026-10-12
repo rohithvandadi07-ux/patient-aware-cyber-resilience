@@ -1,10 +1,34 @@
-# Phase 1 foundation only: backend API + Postgres/TimescaleDB.
+# Phase 14: backend API + SOC dashboard + Postgres/TimescaleDB, one
+# `docker compose up`.
 #
-# Hyperledger Fabric's test-network is deliberately NOT included here yet — it is
-# brought up separately via its own sample scripts in blockchain/network/ once
-# Phase 8 starts (architecture spec Section 14). Keeping it out of this file until
-# then avoids making every `docker compose up` during Phase 1-7 development pay
-# for a blockchain network nothing is using yet.
+# Hyperledger Fabric's network is deliberately NOT a compose service here --
+# this is a locked decision from Phase 8, not an oversight carried forward
+# from Phase 1's placeholder comment above. Phase 8 found this project's
+# development sandbox blocks every container registry it tried (Docker Hub,
+# ghcr.io, mcr.microsoft.com, gcr.io all returned 403 Forbidden -- confirmed
+# again in Phase 14 by trying to build this very file's own `backend` image,
+# which failed pulling `python:3.12-slim` the same way), so Fabric runs via
+# downloaded native binaries (`peer`, `orderer`, `cryptogen`, `configtxgen`,
+# `osnadmin`) instead of `docker-compose`/`test-network.sh` -- see
+# `blockchain/network/README.md` for how to bring it up. Section 19's Phase
+# 14 gate ("full stack ... runs from one `docker compose up`") is therefore
+# met for backend + frontend + Postgres, the three services this file
+# actually controls; Fabric is brought up separately, by design, both
+# because Phase 8 already decided it and because this sandbox cannot
+# containerize it at all.
+#
+# Disclosure that applies to every service below, not just the Fabric
+# question: nothing in this file has been build- or run-verified in this
+# project's development sandbox, because that same registry block means no
+# base image anywhere in this compose file (`timescale/timescaledb`,
+# `python:3.12-slim`, `node:22-alpine`, `nginx:1.27-alpine`) can actually be
+# pulled here. This is written and reviewed against the real Dockerfiles,
+# the real `requirements.txt`/`package.json`, and `docker compose config`'s
+# syntax validation (which needs no image pull and passes) -- not against an
+# actual `docker compose up`. Verify it for real in an environment with
+# registry access before treating this gate as more than "written and
+# config-validated." See README.md's "Docker" section for the same
+# disclosure in context.
 
 services:
   db:
@@ -37,8 +61,30 @@ services:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-patient_aware_cyber_resilience}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # The dashboard's own browser origin, not the frontend container's
+      # internal compose hostname -- CORS is enforced by the browser
+      # against whatever origin the page was actually loaded from
+      # (Settings.cors_allowed_origins' own docstring, Phase 10).
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-5173}
     ports:
       - "${API_PORT:-8000}:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked in at build time (Vite has no runtime env step for a static
+        # build -- see frontend/Dockerfile's own comment) as the URL the
+        # user's browser, not another container, will reach the backend at:
+        # the backend's published host port, matching `API_PORT` below so
+        # the two stay consistent if either is customized.
+        VITE_API_BASE_URL: http://localhost:${API_PORT:-8000}
+    container_name: pacr-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
 
 volumes:
   pacr_db_data:
