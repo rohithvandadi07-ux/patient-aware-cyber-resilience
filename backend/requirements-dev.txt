@@ -1,6 +1,11 @@
 -r requirements.txt
-pytest==8.3.4
-pytest-asyncio==0.25.0
+# pytest/pytest-asyncio bumped in Phase 12: pip-audit flagged pytest 8.3.4
+# (PYSEC-2026-1845, a predictable /tmp/pytest-of-{user} directory name that
+# allows a local user to interfere with or pre-create that directory) --
+# fixed in 9.0.3. pytest-asyncio 0.25.0 pins pytest<9, so it needed bumping
+# too (1.4.0 supports pytest<10,>=8.4); the full suite still passes.
+pytest==9.0.3
+pytest-asyncio==1.4.0
 httpx==0.28.1
 ruff==0.8.4
 # Phase 11: top-level tests/ E2E suite (Scenario A/B through the real UI).

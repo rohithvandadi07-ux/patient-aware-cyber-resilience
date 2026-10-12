@@ -71,13 +71,32 @@ for phase-by-phase decisions. As of this commit:
   means here and what still has no UI control (agent-trace seeding, by
   design — no live LLM backend or orchestrator exists yet, unchanged by
   this phase).
-- **Not yet built:** Phases 12–15 — a security hardening pass,
-  experiments/evaluation with real reported numbers, a Dockerized
-  full-stack deployment, and a final documentation pass. There is still no
-  automatic multi-agent orchestrator; the five agents are sequenced
-  manually wherever they're exercised (tests, the lifecycle integration
-  test above, the Phase 11 E2E seeding), standing in for an orchestration
-  decision the architecture doc deliberately leaves open.
+- **Phase 12 (security hardening pass): complete.** The architecture spec's
+  Phase 12 gate calls for verifying "the brief's Section 16" checklist
+  item by item; the original brief's Section 16 is not recoverable in this
+  repo, project, or session, so `docs/security-checklist.md` is an
+  explicitly disclosed, self-constructed substitute (OWASP API Security Top
+  10 2023, OWASP ASVS Level 1, CWE Top 25) rather than something fabricated
+  and mislabeled as the brief's own text. Real findings were fixed, not
+  just logged: `pip-audit` found 16 CVEs in the `fastapi`/`starlette`
+  dependency chain and in `pytest` (fixed by bumping `fastapi` 0.115.6 →
+  0.143.0 and `pytest`/`pytest-asyncio` to 9.0.3/1.4.0 — 0 vulnerabilities
+  now), and `Settings.debug` now defaults to `False` instead of `True` (a
+  security-relevant default should fail safe, not require an operator to
+  remember to turn it off). Secrets scanning, subprocess/injection safety,
+  error-disclosure surfaces, and Fabric's TLS posture were all re-verified
+  against the real code, not re-asserted from memory. Known gaps (no rate
+  limiting, no authentication layer) are disclosed, not fixed this phase —
+  see the checklist for why. Full backend/frontend/E2E suites pass against
+  the upgraded dependencies.
+- **Not yet built:** Phases 13–15 — experiments/evaluation with real
+  reported numbers, a Dockerized full-stack deployment, and a final
+  documentation pass. There is still no automatic multi-agent orchestrator;
+  the five agents are sequenced manually wherever they're exercised (tests,
+  the lifecycle integration test above, the Phase 11 E2E seeding), standing
+  in for an orchestration decision the architecture doc deliberately leaves
+  open. There is also still no rate limiting or authentication layer
+  (disclosed known gaps, Phase 12 security checklist).
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.

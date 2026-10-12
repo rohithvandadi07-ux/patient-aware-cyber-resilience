@@ -1,4 +1,11 @@
-fastapi==0.115.6
+# fastapi pin bumped in Phase 12 (security hardening pass): 0.115.6 resolved
+# transitively to starlette 0.41.3, which pip-audit flagged with multiple
+# real CVEs (DoS via crafted Range headers, Host-header request.url
+# reconstruction, urlencoded form field/size limits silently not enforced,
+# among others -- see docs/security-checklist.md). 0.143.0 resolves to
+# starlette 1.7.0, which pip-audit confirms is clean; the full backend
+# suite (342 tests) and the Phase 11 E2E suite both still pass against it.
+fastapi==0.143.0
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.1

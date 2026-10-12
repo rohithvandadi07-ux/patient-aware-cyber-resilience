@@ -30,7 +30,17 @@ class Settings(BaseSettings):
     # --- Application ---
     app_name: str = "Patient-Aware Cyber Resilience Platform"
     environment: str = Field(default="development", description="development | test | production")
-    debug: bool = Field(default=True)
+    debug: bool = Field(
+        default=False,
+        description="Passed straight through to FastAPI's own `debug` flag (`app_factory.py`), which "
+        "controls Starlette's `ServerErrorMiddleware` -- when true, an unhandled exception returns a "
+        "full traceback (internal file paths, source lines, local variable values) in the HTTP "
+        "response body instead of a generic 500. Phase 12 security pass: defaults to false (fail "
+        "safe) rather than true, since a security-relevant default should not require an operator to "
+        "remember to turn it off before anything is ever exposed. Local development opts in "
+        "explicitly via `DEBUG=true` in `.env` (see `.env.example`) rather than inheriting it silently "
+        "from this default.",
+    )
 
     # --- API ---
     api_host: str = Field(default="0.0.0.0")
