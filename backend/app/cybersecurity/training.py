@@ -109,6 +109,15 @@ def train_baselines(df: pd.DataFrame, seed: int = 42) -> dict[str, Any]:
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.25, random_state=seed, stratify=y
     )
+    # Reset to a plain 0..n-1 index so every per-row array below (numpy
+    # predictions, pd.Series predictions with a fresh default index) stays
+    # positionally aligned with X_test/y_test for any caller that zips them
+    # together row-by-row -- Phase 13's evaluation harness is exactly such a
+    # caller (see app/evaluation/run_baseline_comparison.py), and the
+    # original train_test_split index (sampled from df) is not otherwise
+    # meaningful to preserve.
+    X_test = X_test.reset_index(drop=True)
+    y_test = y_test.reset_index(drop=True)
 
     class_weight_values = compute_class_weight(
         class_weight="balanced", classes=np.array(labels), y=y_train.to_numpy()
@@ -116,7 +125,17 @@ def train_baselines(df: pd.DataFrame, seed: int = 42) -> dict[str, Any]:
     class_weight_map = dict(zip(labels, class_weight_values.tolist(), strict=True))
     sample_weight_train = y_train.map(class_weight_map)
 
-    results: dict[str, Any] = {"labels": labels, "class_weights": class_weight_map, "models": {}}
+    results: dict[str, Any] = {
+        "labels": labels,
+        "class_weights": class_weight_map,
+        "models": {},
+        # Phase 13 addition: the actual held-out split (not re-derived from a
+        # second train_test_split call elsewhere, which -- even with the same
+        # seed -- would be one more place to silently drift from what was
+        # really trained on). Every per-row prediction below is positionally
+        # aligned with these two.
+        "test_data": {"X_test": X_test, "y_test": y_test},
+    }
 
     rf = RandomForestClassifier(
         n_estimators=200,
@@ -131,6 +150,7 @@ def train_baselines(df: pd.DataFrame, seed: int = 42) -> dict[str, Any]:
         "estimator": rf,
         "hyperparameters": {"n_estimators": 200, "max_depth": None, "class_weight": "balanced"},
         "metrics": compute_metrics(y_test, rf_pred, labels),
+        "predictions": pd.Series(rf_pred),
     }
 
     label_to_index = {label: i for i, label in enumerate(labels)}
@@ -153,6 +173,7 @@ def train_baselines(df: pd.DataFrame, seed: int = 42) -> dict[str, Any]:
         "estimator": xgb,
         "hyperparameters": {"n_estimators": 200, "max_depth": 6, "learning_rate": 0.1},
         "metrics": compute_metrics(y_test_idx.map(lambda i: labels[i]), xgb_pred, labels),
+        "predictions": xgb_pred,
     }
 
     return results

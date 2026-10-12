@@ -1,0 +1,284 @@
+{
+  "generated_at": "2026-10-12T09:03:06.347649+00:00",
+  "data_source": "SYNTHETIC stand-in dataset (not real CICIoMT2024 -- see datasets/LICENSE_NOTES.md)",
+  "training_seed": 42,
+  "device_context_seed": 2026,
+  "models": {
+    "random_forest": {
+      "model_name": "random_forest",
+      "trials": 2038,
+      "detections_fired": 1035,
+      "real_attacks_in_split": 1038,
+      "false_positives_in_split": 0,
+      "high_stakes_real_attack_trials": 162,
+      "systems": {
+        "detection_only": {
+          "autonomous_executions": 0,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
+        "fixed_response": {
+          "autonomous_executions": 1035,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 1.0,
+            "numerator": 162,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
+        "full_system": {
+          "autonomous_executions": 524,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        }
+      },
+      "detection_metrics": {
+        "accuracy": 0.9995093228655545,
+        "precision_macro": 0.9998334998334998,
+        "recall_macro": 0.9973544973544973,
+        "f1_macro": 0.998583374979177,
+        "f1_per_class": {
+          "ddos": 1.0,
+          "dos": 1.0,
+          "mqtt_based": 1.0,
+          "reconnaissance": 1.0,
+          "spoofing": 0.992,
+          "unknown": 0.9995002498750625
+        },
+        "false_positive_rate_per_class": {
+          "ddos": 0.0,
+          "dos": 0.0,
+          "mqtt_based": 0.0,
+          "reconnaissance": 0.0,
+          "spoofing": 0.0,
+          "unknown": 0.0009633911368015414
+        },
+        "confusion_matrix": [
+          [
+            300,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            375,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            225,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            75,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            62,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1000
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "ddos",
+          "dos",
+          "mqtt_based",
+          "reconnaissance",
+          "spoofing",
+          "unknown"
+        ]
+      }
+    },
+    "xgboost": {
+      "model_name": "xgboost",
+      "trials": 2038,
+      "detections_fired": 1037,
+      "real_attacks_in_split": 1038,
+      "false_positives_in_split": 0,
+      "high_stakes_real_attack_trials": 162,
+      "systems": {
+        "detection_only": {
+          "autonomous_executions": 0,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
+        "fixed_response": {
+          "autonomous_executions": 1037,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 1.0,
+            "numerator": 162,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
+        "full_system": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        }
+      },
+      "detection_metrics": {
+        "accuracy": 0.9995093228655545,
+        "precision_macro": 0.9998334998334998,
+        "recall_macro": 0.9973544973544973,
+        "f1_macro": 0.998583374979177,
+        "f1_per_class": {
+          "ddos": 1.0,
+          "dos": 1.0,
+          "mqtt_based": 1.0,
+          "reconnaissance": 1.0,
+          "spoofing": 0.992,
+          "unknown": 0.9995002498750625
+        },
+        "false_positive_rate_per_class": {
+          "ddos": 0.0,
+          "dos": 0.0,
+          "mqtt_based": 0.0,
+          "reconnaissance": 0.0,
+          "spoofing": 0.0,
+          "unknown": 0.0009633911368015414
+        },
+        "confusion_matrix": [
+          [
+            300,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            375,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            225,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            75,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            62,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1000
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "ddos",
+          "dos",
+          "mqtt_based",
+          "reconnaissance",
+          "spoofing",
+          "unknown"
+        ]
+      }
+    }
+  }
+}

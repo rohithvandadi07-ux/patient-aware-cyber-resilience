@@ -6,5 +6,19 @@ architecture specification, Section 18. Trained model artifacts live in
 `experiments/models/`, versioned by filename plus a metadata JSON — not committed to
 git (large binaries don't belong in the repo).
 
-Status: not started. Phase 13 work — no experiment runs, and no number is reported,
-until the system components it measures actually exist.
+Status: Phase 13 partial. The detection-only vs. full-system comparison (the
+Phase 13 gate's literal minimum) is implemented and has real reported
+numbers — see `backend/app/evaluation/` for the code and `evaluation/` for
+the report. That run trains fresh in-process (same established pattern as
+`backend/tests/test_lifecycle_integration.py` and `tests/e2e/conftest.py`),
+so no artifact needs to exist in `experiments/models/` for it to work; this
+directory stays empty-but-ready for whichever run config actually needs a
+persisted artifact (e.g. a real CICIoMT2024 training run, once that dataset
+is downloadable).
+
+Not yet done: the `fixed_response` baseline implemented alongside
+`full_system` is a minimal naive-policy stand-in needed to make the
+comparison non-trivial (see `backend/app/evaluation/baseline_systems.py`'s
+docstring), not the complete five-system progression or the seven ablations
+Section 18 describes — those remain for a later pass, built only once each
+system variant they'd compare is itself real.

@@ -89,14 +89,34 @@ for phase-by-phase decisions. As of this commit:
   limiting, no authentication layer) are disclosed, not fixed this phase —
   see the checklist for why. Full backend/frontend/E2E suites pass against
   the upgraded dependencies.
-- **Not yet built:** Phases 13–15 — experiments/evaluation with real
-  reported numbers, a Dockerized full-stack deployment, and a final
-  documentation pass. There is still no automatic multi-agent orchestrator;
-  the five agents are sequenced manually wherever they're exercised (tests,
-  the lifecycle integration test above, the Phase 11 E2E seeding), standing
-  in for an orchestration decision the architecture doc deliberately leaves
-  open. There is also still no rate limiting or authentication layer
-  (disclosed known gaps, Phase 12 security checklist).
+- **Phase 13 (experiments + evaluation): partial, gate met.** The Phase 13
+  gate ("at least the detection-only vs. full-system baseline comparison
+  has real, reported numbers") is met: `backend/app/evaluation/` runs all
+  three of detection-only, a naive fixed-response baseline, and the real
+  Risk Engine + Policy Engine (`full_system`) across 2038 randomized trials
+  per detector (Random Forest and XGBoost), pairing each held-out test row
+  with an independently-sampled device context. Real result (see
+  `evaluation/phase13_baseline_comparison.md`): on the 162 trials per model
+  that were both a real attack and a HIGH-criticality, patient-dependent
+  device, the naive baseline autonomously executed a disruptive action
+  100% of the time (162/162); the real patient-aware system did so 0% of
+  the time (0/162), routing every one to human approval instead —
+  Section 17's Scenario B finding, generalized from two fixed scenarios to
+  hundreds of randomized ones. One metric (`unnecessary_isolation_rate`)
+  could not be measured this run — a disclosed dataset limitation (the
+  synthetic stand-in's classes are cleanly separated enough that both
+  detectors measured zero false positives), not a hidden gap; see the
+  report for why. The fuller five-system/seven-ablation comparison Section
+  18 describes remains for later.
+- **Not yet built:** Phases 14–15 — a Dockerized full-stack deployment and a
+  final documentation pass; the fuller five-system/seven-ablation
+  comparison beyond Phase 13's gate. There is still no automatic
+  multi-agent orchestrator; the five agents are sequenced manually
+  wherever they're exercised (tests, the lifecycle integration test above,
+  the Phase 11 E2E seeding, Phase 13's evaluation harness), standing in for
+  an orchestration decision the architecture doc deliberately leaves open.
+  There is also still no rate limiting or authentication layer (disclosed
+  known gaps, Phase 12 security checklist).
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.
