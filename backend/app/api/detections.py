@@ -16,16 +16,44 @@ artifacts don't belong in git). If none has been trained yet in this
 environment, this router returns 503 with instructions, rather than crashing
 app startup or silently returning no detections as if that were a real
 result.
+
+Phase 9 addition: Section 7 step 2 ("the collector timestamps and stores
+[telemetry/events]") and step 3 ("this creates an `Incident` in
+`status=detected`") were, before this phase, true only of the dedicated
+test suites for each layer -- nothing on the request path actually wrote a
+scenario's telemetry/events into the stores `/telemetry`/`/events` read
+from (`app/repositories/telemetry_events.py`), or turned a `DetectionEvent`
+into a real, queryable `Incident`. This endpoint now does both, using the
+shared `app.state` singletons (not a second, disconnected copy), and
+enqueues each new incident's blockchain provenance the same way
+`/incidents`' own `POST` does. The scenario still runs against a *fresh*
+`build_default_fleet()` registry, not `app.state.device_registry` --
+deliberately preserved from Phase 3, so this fixed, scripted scenario
+remains reproducible call-to-call regardless of what the shared device
+registry's live state happens to be; only the resulting evidence (events,
+telemetry, incidents, outbox entries) is written into shared state.
 """
 
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.dependencies import (
+    get_incident_repository,
+    get_network_event_store,
+    get_outbox_repository,
+    get_telemetry_store,
+)
+from app.blockchain.hashing import hash_payload
+from app.blockchain.outbox import OutboxRepository, enqueue_incident
 from app.cybersecurity.detection_service import DetectionService, load_model
 from app.cybersecurity.feature_extraction import FeatureWindow
 from app.iomt_simulator.hospital import build_default_fleet
 from app.iomt_simulator.scenario import AttackInjection, ScenarioRunner
+from app.repositories.incidents import IncidentRepository
+from app.repositories.telemetry_events import NetworkEventStore, TelemetryStore
+from app.schemas.blockchain import IncidentProvenance
 from app.schemas.detection import DetectionEvent
 
 router = APIRouter(prefix="/detections", tags=["detections"])
@@ -60,6 +88,10 @@ def get_detection_service() -> DetectionService:
 @router.post("/run-scenario", response_model=list[DetectionEvent])
 async def run_scenario_and_detect(
     service: DetectionService = Depends(get_detection_service),
+    network_event_store: NetworkEventStore = Depends(get_network_event_store),
+    telemetry_store: TelemetryStore = Depends(get_telemetry_store),
+    incident_repo: IncidentRepository = Depends(get_incident_repository),
+    outbox_repo: OutboxRepository = Depends(get_outbox_repository),
 ) -> list[DetectionEvent]:
     """Run one fixed, reproducible attack scenario (a scripted spoofed-command
     injection against the ventilator, same shape as the Phase 2 scenario
@@ -82,6 +114,11 @@ async def run_scenario_and_detect(
     runner = ScenarioRunner(registry, seed=42, injections=[injection])
     result = runner.run(num_ticks=10)
 
+    # Section 7 step 2: the collector stores telemetry/events, tagged with
+    # device_id -- the shared stores, not a value nothing keeps.
+    network_event_store.record_many(result.network_events)
+    telemetry_store.record_many(result.telemetry)
+
     detections: list[DetectionEvent] = []
     events_by_device: dict[str, list] = {}
     for event in result.network_events:
@@ -97,5 +134,23 @@ async def run_scenario_and_detect(
         detection = service.score_window(window)
         if detection is not None:
             detections.append(detection)
+
+    # Section 7 step 3: "This creates an Incident in status=detected" --
+    # plus its blockchain provenance (step 13), same wiring as
+    # /incidents' own POST. A fresh incident_id per detection (not a
+    # device-derived one) because run-scenario can legitimately fire more
+    # than once for the same device across the life of this process, and
+    # IncidentRepository.create rejects a duplicate id outright.
+    for detection in detections:
+        incident_id = f"INC-{detection.device_id}-{uuid4().hex[:8]}"
+        incident = incident_repo.create(incident_id, device_id=detection.device_id)
+        provenance = IncidentProvenance(
+            incident_id=incident.incident_id,
+            device_id=incident.device_id,
+            attack_type=detection.attack_type.value,
+            evidence_hash=hash_payload(detection.evidence_ref),
+            timestamp=detection.timestamp,
+        )
+        enqueue_incident(outbox_repo, provenance)
 
     return detections

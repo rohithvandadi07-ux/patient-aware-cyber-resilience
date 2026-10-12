@@ -6,4 +6,11 @@ hardcoded), structured logging configuration, and the FastAPI application factor
 Everything in this package is infrastructure, not domain logic. No cybersecurity,
 agent, risk, or policy code belongs here.
 
-Status: implemented (Phase 1) — `config.py`, `logging.py`, `app_factory.py`.
+Status: `config.py`/`logging.py` implemented Phase 1; `app_factory.py` grew in
+every phase since as each new resource router/service needed wiring. Phase 9
+is the largest single addition: `_register_state` now seeds every Phase 4-8
+in-memory repository/store as an `app.state` singleton (not just the Phase 2
+device registry), plus a `FabricClient` (mock or subprocess, per
+`Settings.fabric_client_mode` — see `config.py`'s Phase 9 addition) and an
+`OutboxWorker`; `_register_routers` registers all 12 of Section 15's
+resource routers. See `app/api/README.md` for what each router actually does.

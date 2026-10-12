@@ -30,5 +30,13 @@ class RecoveryResultRepository:
         reopen loop, so this returns a list, not a single latest result."""
         return [r for r in self._results if r.incident_id == incident_id]
 
+    def list_all(self) -> list[RecoveryResult]:
+        """Every recovery check recorded across every incident, in the order
+        recorded. Added in Phase 9 for the `/recovery` API router's
+        unfiltered list endpoint -- the same kind of addition as
+        `IncidentRepository.list_all`/`AgentTraceRecorder.all_traces`, not a
+        change to this repository's existing query semantics."""
+        return list(self._results)
+
     def clear(self) -> None:
         self._results.clear()

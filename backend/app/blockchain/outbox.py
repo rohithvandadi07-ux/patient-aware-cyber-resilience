@@ -78,6 +78,16 @@ class OutboxRepository:
     def list_for_incident(self, incident_id: str) -> list[OutboxEntry]:
         return [e for e in self._entries.values() if e.payload.get("incident_id") == incident_id]
 
+    def list_all(self) -> list[OutboxEntry]:
+        """Every outbox entry regardless of status or incident -- added in
+        Phase 9 for the `/blockchain/audit` API router's unfiltered listing
+        (Section 16's Blockchain Audit dashboard section), in insertion
+        order. Filtering by status/incident_id is left to the caller
+        (the router), the same way `AgentTraceRecorder.all_traces` leaves
+        filtering to its callers rather than growing a method per filter
+        combination."""
+        return list(self._entries.values())
+
     def mark_confirmed(self, entry_id: int, chain_tx_id: str) -> OutboxEntry:
         entry = self.get(entry_id)
         entry.status = OutboxStatus.CONFIRMED

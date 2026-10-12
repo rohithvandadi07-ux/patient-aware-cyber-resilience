@@ -53,6 +53,16 @@ class Settings(BaseSettings):
         default="provenance",
         description="Chaincode name as committed via blockchain/network/scripts/deploy-chaincode.sh.",
     )
+    fabric_client_mode: str = Field(
+        default="mock",
+        description="'mock' | 'subprocess' -- which FabricClient implementation backs the outbox "
+        "worker in this process (app/blockchain/outbox_worker.py). Defaults to 'mock' because most "
+        "environments running this app (including its own default dev/test runs) have no live "
+        "Fabric network up; the real native-Fabric network in blockchain/network/ is brought up "
+        "explicitly (see blockchain/network/README.md), the same precondition "
+        "backend/tests/test_blockchain_integration.py gates on. Set to 'subprocess' only once that "
+        "network is actually running, to get real on-chain commits instead of an in-memory double.",
+    )
 
     # --- Logging ---
     log_level: str = Field(default="INFO", description="DEBUG | INFO | WARNING | ERROR | CRITICAL")

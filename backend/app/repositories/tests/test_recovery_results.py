@@ -42,6 +42,16 @@ def test_list_for_incident_returns_every_check_in_recorded_order():
     assert results[1].recovery_succeeded is True
 
 
+def test_list_all_returns_every_result_across_every_incident_in_recorded_order():
+    repo = RecoveryResultRepository()
+    repo.record(_result("incident-1", recovery_succeeded=False))
+    repo.record(_result("incident-2", recovery_succeeded=True))
+
+    results = repo.list_all()
+
+    assert [r.incident_id for r in results] == ["incident-1", "incident-2"]
+
+
 def test_clear_empties_the_store():
     repo = RecoveryResultRepository()
     repo.record(_result("incident-1"))

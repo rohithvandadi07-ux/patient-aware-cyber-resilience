@@ -88,6 +88,15 @@ def test_list_for_incident_filters_by_incident_id_in_payload():
     assert len(repo.list_for_incident("INC-1")) == 1
 
 
+def test_list_all_returns_every_entry_regardless_of_status():
+    repo = OutboxRepository()
+    pending = repo.enqueue(OutboxRecordType.INCIDENT, {"incident_id": "INC-1"})
+    confirmed = repo.enqueue(OutboxRecordType.INCIDENT, {"incident_id": "INC-2"})
+    repo.mark_confirmed(confirmed.id, "tx-123")
+
+    assert {e.id for e in repo.list_all()} == {pending.id, confirmed.id}
+
+
 def test_enqueue_incident_dumps_provenance_with_snake_case_keys():
     repo = OutboxRepository()
     provenance = IncidentProvenance(

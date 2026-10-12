@@ -8,10 +8,32 @@ response-execution hot path — writes are queued and confirmed asynchronously.
 
 ## Status
 
-Implemented, unit-tested (34 tests, no live network needed), and — see
+Implemented, unit-tested (34 tests as of Phase 8, more added in Phase 9 —
+see below — no live network needed), and — see
 `../../../blockchain/README.md` for the Phase 8 integration test — proven
 against the real network and real chaincode in `blockchain/network/` and
 `blockchain/chaincode/`.
+
+Phase 9 addition: `hashing.py`'s `hash_payload` is the first real computation
+of the hash strings every `*Provenance` schema (`app/schemas/blockchain.py`)
+and `FabricClient` method expects (`evidence_hash`, `risk_score_hash`,
+`residual_threats_hash`) — before this phase, every caller (including this
+package's own tests) passed a literal placeholder string. The `/incidents`,
+`/responses/proposed`, `/responses/executed`, and `/recovery` API routers
+(`app/api/`) are the first real callers of `outbox.py`'s `enqueue_*`
+helpers outside a test — that module's own docstring named "the response
+orchestrator, recovery orchestrator, policy engine, approval endpoint" as
+the intended callers, and Phase 9 is what actually wires them in. Also new:
+`OutboxRepository.list_all()`, for `/blockchain/audit`'s unfiltered listing.
+
+`app/core/app_factory.py` registers an `OutboxWorker` on `app.state`
+(backed by `MockFabricClient` by default, or a real `SubprocessFabricClient`
+when `Settings.fabric_client_mode="subprocess"` and the native-Fabric
+network is actually running) but does **not** start `run_forever()` as a
+background task — draining stays a manual `POST /blockchain/audit/process`
+call. Running the drain loop unattended for the life of the process is a
+deployment/lifespan concern Phase 9's own gate (Section 19: "all resource
+routers exist and are covered by API tests") does not require.
 
 ## Layout
 
