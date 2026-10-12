@@ -57,14 +57,27 @@ for phase-by-phase decisions. As of this commit:
   `frontend/src/routes/IncidentDetail.fullLifecycle.test.tsx` each drive
   one real incident through this entire chain end to end and assert on
   the real result.
-- **Not yet built:** Phases 11–15 — end-to-end integration exercised
-  through the real UI (not just backend tests), a security hardening pass,
+- **Phase 11 (end-to-end integration): complete.** `tests/e2e/` drives
+  Scenario A (infusion-pump-01, DoS) and Scenario B (ventilator-01,
+  command-injection/MITM) through the real rendered SOC dashboard in a real
+  Chromium browser (Playwright), against a real running backend and
+  frontend process — not `TestClient`, not jsdom. Scenario B's test is the
+  most direct check of this project's central research claim: a real human
+  approval, submitted through the real approval form, clears a genuinely
+  safer non-shutdown action (`isolate_non_critical`, verified against the
+  real Policy Engine and Risk Engine rule tables, not assumed) — the system
+  never autonomously shuts down this patient-dependent, high-criticality
+  device. See `tests/README.md` for exactly what "through the real UI"
+  means here and what still has no UI control (agent-trace seeding, by
+  design — no live LLM backend or orchestrator exists yet, unchanged by
+  this phase).
+- **Not yet built:** Phases 12–15 — a security hardening pass,
   experiments/evaluation with real reported numbers, a Dockerized
   full-stack deployment, and a final documentation pass. There is still no
   automatic multi-agent orchestrator; the five agents are sequenced
   manually wherever they're exercised (tests, the lifecycle integration
-  test above), standing in for an orchestration decision the architecture
-  doc deliberately leaves open.
+  test above, the Phase 11 E2E seeding), standing in for an orchestration
+  decision the architecture doc deliberately leaves open.
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.
@@ -114,6 +127,16 @@ npm run dev    # Vite dev server, default http://localhost:5173
 The backend's default CORS allowlist (`Settings.cors_allowed_origins`)
 already includes the Vite dev server's default origin — see
 `backend/app/core/README.md`.
+
+The Phase 11 Scenario A/B end-to-end suite starts its own backend and
+frontend processes, so it doesn't need either of the above already running:
+
+```bash
+cd backend && source .venv/bin/activate
+pytest -c ../tests/pytest.ini ../tests/e2e
+```
+
+See `tests/README.md` for what this suite actually proves and what it needs installed.
 
 Or via Docker Compose (backend + Postgres/TimescaleDB):
 
