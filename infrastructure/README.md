@@ -1,5 +1,19 @@
 # infrastructure
 
-Docker Compose and Dockerfiles for local development. No Kubernetes or other
-orchestration at this stage — the brief explicitly warns against premature
-over-engineering, and Fabric's own `test-network` already assumes Docker Compose.
+Architecture spec Section 6 planned this directory to hold `docker-compose.yml`
+and the Dockerfiles. That's not where they actually ended up, found and
+corrected during Phase 15's documentation pass rather than left stale: Phase 1
+put `docker-compose.yml` at the repo root (so `docker compose up` works from
+the directory a developer actually clones into, with no `-f` flag needed), and
+Phase 14 put `backend/Dockerfile` and `frontend/Dockerfile` beside the code
+each one builds, not in a shared top-level folder — the more common layout
+when a repo has exactly one Dockerfile per service. This directory is kept
+(with this note) rather than deleted, since Section 6 names it explicitly;
+nothing here should be assumed to exist on disk without checking.
+
+No Kubernetes or other orchestration at this stage — the brief explicitly
+warns against premature over-engineering. Fabric's network is deliberately
+*not* part of `docker-compose.yml` at all — see the root `README.md`'s
+"Docker" section and `blockchain/network/README.md` for why (this project's
+development sandbox blocks every container registry it tried, the same
+constraint that already pushed Fabric to native binaries in Phase 8).

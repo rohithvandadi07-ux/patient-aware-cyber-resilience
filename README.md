@@ -29,10 +29,19 @@ it is one closed-loop platform combining:
 
 ## Status
 
-This project is under active development, built in 16 phases (0–15). See
+This project was built in 16 phases (0–15); all 15 build phases are complete
+as of this commit, locally (see the note on GitHub below). See
 [`docs/architecture.md`](docs/architecture.md) Section 19 for the full phase
-plan and gates, and the Claude Project doc `claude/architecture-decisions.md`
-for phase-by-phase decisions. As of this commit:
+plan and gates, [`docs/phase15-verification.md`](docs/phase15-verification.md)
+for the final pass checking every one of that document's claims against the
+real, current code, and the Claude Project doc
+`claude/architecture-decisions.md` for phase-by-phase decisions. "Complete"
+means each phase's own literal gate was met, including by a disclosed
+deviation where the sandbox or an earlier locked decision forced one
+(Fabric's native bring-up, the synthetic stand-in dataset, Phase 14's
+registry block) — not that every feature the original brief mentioned
+anywhere exists; `docs/phase15-verification.md` and the "still not built"
+bullet below are the honest account of what that excludes.
 
 - **Phases 0–9 (architecture through backend integration): complete.** A
   three-device IoMT simulator with scripted attack scenarios; a trained
@@ -125,17 +134,33 @@ for phase-by-phase decisions. As of this commit:
   config` parses and interpolates the file cleanly, which needs no image
   pull; an actual build/run needs an environment with registry access. See
   the "Docker" section below for the full disclosure.
-- **Not yet built:** Phase 15 — a final documentation pass (checking every
-  claim in `docs/` against what's actually implemented and tested); the
-  fuller five-system/seven-ablation comparison beyond Phase 13's gate; an
-  actual registry-access build/run verification of Phase 14's Docker
-  setup. There is still no automatic multi-agent orchestrator; the five
-  agents are sequenced manually wherever they're exercised (tests, the
-  lifecycle integration test above, the Phase 11 E2E seeding, Phase 13's
-  evaluation harness), standing in for an orchestration decision the
-  architecture doc deliberately leaves open. There is also still no rate
-  limiting or authentication layer (disclosed known gaps, Phase 12
-  security checklist).
+- **Phase 15 (final documentation pass): complete.** Section 19's literal
+  gate — "every claim in `docs/` is checked against what's actually
+  implemented and tested" — is met by `docs/phase15-verification.md`,
+  which re-walks every checkable claim in `docs/architecture.md` (the
+  frozen Phase 0 spec) against the real, current code, section by section,
+  and names every place reality diverged from the original plan, including
+  several never stated plainly inside `docs/` before this phase (the real
+  `RiskScore.response_impact` schema vs. the spec's literal type; Fabric's
+  native-binary bring-up vs. the spec's Docker Compose plan; the
+  `infrastructure/` directory, found empty and corrected, since the real
+  `docker-compose.yml`/Dockerfiles live elsewhere; and a sharper statement
+  of exactly how inert the Postgres/TimescaleDB container is — real,
+  healthy, but connected to by no application code at all). Full backend
+  suite (359 tests), full frontend suite (46 tests), and the Phase 11 E2E
+  suite (2/2) were all re-run for this phase, not carried forward by
+  assertion.
+- **Still not built, by deliberate and disclosed decision, not oversight:**
+  the fuller five-system/seven-ablation comparison beyond Phase 13's gate;
+  an actual registry-access build/run verification of Phase 14's Docker
+  setup; a real Postgres/TimescaleDB migration (the container runs, but no
+  application code reads or writes it yet); authentication/authorization;
+  rate limiting; and any automatic multi-agent orchestration framework —
+  the five agents are still sequenced manually wherever they're exercised
+  (tests, the lifecycle integration test above, the Phase 11 E2E seeding,
+  Phase 13's evaluation harness), the same open Section 11 decision named
+  since Phase 4. `docs/phase15-verification.md` is the single place all of
+  these are listed together with why each remains open.
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.
@@ -153,7 +178,9 @@ configs/        Environment-specific, non-secret configuration
 scripts/        Developer tooling (setup, migrations, dataset download)
 tests/          Integration and end-to-end tests
 docs/           Architecture, threat model, API, and research documentation
-infrastructure/ Docker Compose and Dockerfiles
+infrastructure/ Named by the original plan for Docker Compose + Dockerfiles;
+                those actually live at the repo root and beside the code they
+                build instead — see infrastructure/README.md
 notebooks/      Exploratory analysis only — never production logic
 ```
 

@@ -3,6 +3,8 @@
 Oct 7, 2026 · @Darshan
 
 > This is a static, versioned copy of the Phase 0 architecture doc, committed here so it travels with the code it governs. The live, editable version (with the interactive component diagram) is at https://claude.ai/artifact/D52PsBDN5LmNGmTGF4YHi8 — update that one first for any future revision, then re-sync this copy.
+>
+> **Phase 15 note:** this document describes the plan as approved before Phases 1–14 were built, not necessarily what they ended up building — several sections (Fabric's Docker-vs-native bring-up, the real `RiskScore.response_impact` schema, the dataset actually trained on, the three-system vs. five-system evaluation) diverged from the plan for reasons disclosed phase by phase as they happened. See `docs/phase15-verification.md` for the full, section-by-section reconciliation — read that one for what's actually true today.
 
 Architecture and foundation planning for a research-grade, patient-aware autonomous cyber-resilience platform for healthcare IoMT. This document is Phase 0 deliverable: no implementation code is written against it until Darshan approves it.
 
