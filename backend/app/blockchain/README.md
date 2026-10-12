@@ -54,10 +54,13 @@ routers exist and are covered by API tests") does not require.
   behavior, not a canned-success stub. Keeping this in sync with
   `blockchain/chaincode/lib/provenanceContract.js`'s rules is manual — flagged
   in both files' docstrings.
-- `outbox.py` — `OutboxRepository` (in-memory, same pattern as every other
-  repository in this codebase — `app/repositories/*.py` — pending a Phase 9
-  Postgres swap with the same shape) plus typed `enqueue_*` helpers, one per
-  schema in `app/schemas/blockchain.py`.
+- `outbox.py` — `OutboxRepository` (in-memory; default) and, since the
+  post-Phase-15 Postgres migration, `PostgresOutboxRepository` (same public
+  methods, backed by the real `outbox_entries` table in `app/models/orm.py`,
+  selected via `Settings.repository_backend="postgres"`), plus typed
+  `enqueue_*` helpers, one per schema in `app/schemas/blockchain.py` — those
+  helpers take a repository instance as their first argument and call only
+  `.enqueue(...)`, so they work unchanged against either repository.
 - `outbox_worker.py` — `OutboxWorker.process_once()` drains pending entries
   and dispatches each to the matching `FabricClient` method. Retries a
   `TransientFabricError` (the multi-org endorsement timing race documented in
@@ -75,12 +78,17 @@ routers exist and are covered by API tests") does not require.
 
 ## What's NOT here yet
 
-A real Postgres-backed `chain_tx_id` column on the off-chain `incidents`/
-`decisions`/etc. tables — those tables don't exist yet either; every
-repository in this codebase (including `OutboxRepository` here) is
-in-memory pending Phase 9's real persistence layer, by explicit, consistent
-project decision (see `app/repositories/*.py` and
-`claude/architecture-decisions.md`). `OutboxRepository`'s public shape
-(`enqueue`/`list_pending`/`mark_confirmed`/`mark_failed`) is already
-written to survive that swap without an API change, the same way
-`RecoveryResultRepository` and the others were.
+**Update, post-Phase-15:** the `chain_tx_id` column described below now
+exists for real on `incidents`/`proposed_responses` (well, `decisions`
+proper was never its own table — see `app/models/orm.py`) and
+`executed_responses` via the Postgres migration (`Settings.
+repository_backend="postgres"`; see `app/repositories/README.md`), and
+`outbox_entries` is a real table too when that mode is on. Defaults to
+`"memory"` everywhere, same as before, so nothing below is claimed as the
+default behavior — opt in explicitly to get it.
+
+`OutboxRepository`'s public shape (`enqueue`/`list_pending`/
+`mark_confirmed`/`mark_failed`) was already written to survive that swap
+without an API change, the same way `RecoveryResultRepository` and the
+others were — `PostgresOutboxRepository` (this migration) is exactly that
+swap, not a rewrite.

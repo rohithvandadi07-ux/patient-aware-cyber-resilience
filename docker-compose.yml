@@ -60,6 +60,18 @@ services:
     environment:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-patient_aware_cyber_resilience}
+      # Post-Phase-15 addition: this `db` service is a real, healthy
+      # Postgres/TimescaleDB container -- Phase 15's verification pass
+      # (docs/phase15-verification.md) found it was previously running but
+      # never actually connected to by any application code. The
+      # Postgres-backed repositories added after Phase 15 (see
+      # app/core/db.py, app/repositories/*.py's `Postgres*` classes) make
+      # that connection real. REPOSITORY_BACKEND defaults to "memory" in
+      # Settings itself; set it here, not there, because compose is the
+      # one place that actually guarantees a reachable Postgres before this
+      # container starts (the `depends_on: condition: service_healthy`
+      # above).
+      REPOSITORY_BACKEND: postgres
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # The dashboard's own browser origin, not the frontend container's
       # internal compose hostname -- CORS is enforced by the browser

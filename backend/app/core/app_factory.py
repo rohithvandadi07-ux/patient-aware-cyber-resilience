@@ -76,34 +76,64 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
     dependency injection, never imported as a bare module-level global, so
     tests can override any of them with `app.dependency_overrides`.
 
-    These are still in-memory, not Postgres-backed — Section 8's storage
-    strategy names PostgreSQL/TimescaleDB as the eventual store, but Phase
-    9's own gate (Section 19) is "all resource routers from Section 15
-    exist and are covered by API tests," not a database migration. Wiring a
-    real Postgres layer underneath these same repository interfaces is
-    later, explicitly deferred work, not something this phase claims to
-    have done.
+    These repositories are in-memory by default. Section 8's storage
+    strategy names PostgreSQL/TimescaleDB as the eventual store; a real,
+    Postgres-backed implementation of each of these (except
+    `network_event_store`/`telemetry_store`, a deliberately separate,
+    still-pending TimescaleDB-hypertable task -- see `app/models/orm.py`'s
+    module docstring) is wired in below when
+    `settings.repository_backend == "postgres"`. Defaults to `"memory"`,
+    so the existing 359 backend tests and CI (which brings up no Postgres
+    service) are completely unaffected either way.
     """
     from app.blockchain.fabric_client import SubprocessFabricClient
     from app.blockchain.mock_fabric_client import MockFabricClient
-    from app.blockchain.outbox import OutboxRepository
+    from app.blockchain.outbox import OutboxRepository, PostgresOutboxRepository
     from app.blockchain.outbox_worker import OutboxWorker
     from app.iomt_simulator.hospital import build_default_fleet
-    from app.repositories.agent_traces import AgentTraceRecorder
-    from app.repositories.incidents import IncidentRepository
-    from app.repositories.recovery_results import RecoveryResultRepository
-    from app.repositories.responses import ExecutedResponseRepository, ProposedResponseRepository
+    from app.repositories.agent_traces import AgentTraceRecorder, PostgresAgentTraceRecorder
+    from app.repositories.incidents import IncidentRepository, PostgresIncidentRepository
+    from app.repositories.recovery_results import (
+        PostgresRecoveryResultRepository,
+        RecoveryResultRepository,
+    )
+    from app.repositories.responses import (
+        ExecutedResponseRepository,
+        PostgresExecutedResponseRepository,
+        PostgresProposedResponseRepository,
+        ProposedResponseRepository,
+    )
     from app.repositories.telemetry_events import NetworkEventStore, TelemetryStore
 
     app.state.device_registry = build_default_fleet()
-    app.state.incident_repository = IncidentRepository()
     app.state.network_event_store = NetworkEventStore()
     app.state.telemetry_store = TelemetryStore()
-    app.state.agent_trace_recorder = AgentTraceRecorder()
-    app.state.recovery_result_repository = RecoveryResultRepository()
-    app.state.proposed_response_repository = ProposedResponseRepository()
-    app.state.executed_response_repository = ExecutedResponseRepository()
-    app.state.outbox_repository = OutboxRepository()
+
+    if settings.repository_backend == "postgres":
+        # Real Postgres required (see `app/core/db.py` for the sync-driver
+        # tradeoff this mode accepts). Not the default, because most
+        # environments running this app (including its own default
+        # dev/test runs and CI) have no Postgres reachable at
+        # `settings.database_url`.
+        from app.core.db import build_engine, build_session_factory, create_all_tables
+
+        engine = build_engine(settings.database_url)
+        create_all_tables(engine)
+        session_factory = build_session_factory(engine)
+        app.state.db_engine = engine
+        app.state.incident_repository = PostgresIncidentRepository(session_factory)
+        app.state.agent_trace_recorder = PostgresAgentTraceRecorder(session_factory)
+        app.state.recovery_result_repository = PostgresRecoveryResultRepository(session_factory)
+        app.state.proposed_response_repository = PostgresProposedResponseRepository(session_factory)
+        app.state.executed_response_repository = PostgresExecutedResponseRepository(session_factory)
+        app.state.outbox_repository = PostgresOutboxRepository(session_factory)
+    else:
+        app.state.incident_repository = IncidentRepository()
+        app.state.agent_trace_recorder = AgentTraceRecorder()
+        app.state.recovery_result_repository = RecoveryResultRepository()
+        app.state.proposed_response_repository = ProposedResponseRepository()
+        app.state.executed_response_repository = ExecutedResponseRepository()
+        app.state.outbox_repository = OutboxRepository()
 
     if settings.fabric_client_mode == "subprocess":
         # Real native-Fabric network required (blockchain/network/README.md)

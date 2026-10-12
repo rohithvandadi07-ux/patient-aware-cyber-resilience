@@ -1,19 +1,23 @@
-"""In-memory Incident repository.
+"""Incident repository -- in-memory by default, a real Postgres-backed
+implementation available via `Settings.repository_backend = "postgres"`.
 
 Architecture spec Section 8: incidents eventually live in PostgreSQL, with
-foreign keys enforcing that an incident always references a real device --
-but that's Phase 9 (backend integration/persistence). Every layer from Phase 4
-onward (agents, risk engine, policy engine) needs *some* real incident store to
-call `get_incident`/create/update against now, so this repository holds that
-contract today as an in-memory dict, following the same pattern as Phase 2's
-`DeviceRegistry` -- swapping this for a real Postgres-backed implementation in
-Phase 9 should be a constructor change for callers, not an API rewrite, which
-is why the public methods here are already shaped like repository methods
-(`get`, `create`, `update_status`), not like dict access.
+foreign keys enforcing that an incident always references a real device.
+`IncidentRepository` (below) was Phase 4's in-memory stand-in, built so that
+swapping it for a real Postgres-backed implementation would be "a
+constructor change for callers, not an API rewrite" -- which is exactly
+what `PostgresIncidentRepository`, added later (see its own docstring for
+scope and the sync-driver tradeoff), actually is: the same public methods,
+same signatures, same return types, backed by a real `incidents` table
+instead of a dict. `app/core/app_factory.py` picks which one to construct.
 """
 
 from datetime import UTC, datetime
 
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.db import session_scope
+from app.models.orm import IncidentORM
 from app.schemas.enums import IncidentStatus
 from app.schemas.incident import Incident
 
@@ -60,3 +64,74 @@ class IncidentRepository:
 
     def list_all(self) -> list[Incident]:
         return list(self._incidents.values())
+
+
+def _incident_from_row(row: IncidentORM) -> Incident:
+    return Incident(
+        incident_id=row.incident_id,
+        device_id=row.device_id,
+        status=IncidentStatus(row.status),
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        chain_tx_id=row.chain_tx_id,
+    )
+
+
+class PostgresIncidentRepository:
+    """Real, Postgres-backed `IncidentRepository` -- same public interface,
+    same synchronous call shape (see `app/core/db.py`'s docstring for why
+    sync), backed by the `incidents` table (`app/models/orm.py`) instead of
+    a dict. One short-lived session per call (`session_scope`), not one
+    session held for the repository's lifetime, so concurrent requests each
+    get their own transaction rather than contending on a shared one.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def create(self, incident_id: str, device_id: str) -> Incident:
+        now = datetime.now(UTC)
+        with session_scope(self._session_factory) as session:
+            if session.get(IncidentORM, incident_id) is not None:
+                raise ValueError(f"Incident '{incident_id}' already exists")
+            row = IncidentORM(
+                incident_id=incident_id,
+                device_id=device_id,
+                status=IncidentStatus.DETECTED.value,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+            session.flush()
+            return _incident_from_row(row)
+
+    def get(self, incident_id: str) -> Incident:
+        with session_scope(self._session_factory) as session:
+            row = session.get(IncidentORM, incident_id)
+            if row is None:
+                raise IncidentNotFoundError(incident_id)
+            return _incident_from_row(row)
+
+    def update_status(self, incident_id: str, status: IncidentStatus) -> Incident:
+        with session_scope(self._session_factory) as session:
+            row = session.get(IncidentORM, incident_id)
+            if row is None:
+                raise IncidentNotFoundError(incident_id)
+            row.status = status.value
+            row.updated_at = datetime.now(UTC)
+            session.flush()
+            return _incident_from_row(row)
+
+    def list_for_device(self, device_id: str) -> list[Incident]:
+        with session_scope(self._session_factory) as session:
+            rows = (
+                session.query(IncidentORM)
+                .filter(IncidentORM.device_id == device_id)
+                .all()
+            )
+            return [_incident_from_row(row) for row in rows]
+
+    def list_all(self) -> list[Incident]:
+        with session_scope(self._session_factory) as session:
+            rows = session.query(IncidentORM).all()
+            return [_incident_from_row(row) for row in rows]

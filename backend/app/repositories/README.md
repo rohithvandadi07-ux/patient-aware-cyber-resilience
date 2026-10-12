@@ -10,12 +10,25 @@ Phase 7 added (`recovery_results.py`), and Phase 9 added (`responses.py` —
 `ProposedResponseRepository` + `ExecutedResponseRepository`, the two new
 stores the `/responses/proposed` and `/responses/executed` API routers need
 to hold a `PolicyDecision`/`ExecutedResponse` across a request boundary).
-Real persistence (PostgreSQL/TimescaleDB per the architecture spec's Section
-8) is still not built — Phase 9's actual gate (Section 19) is "all resource
-routers exist and are covered by API tests," not a database migration, so
-every repository here remains in-memory on purpose, not by oversight. Each
-in-memory repository's public method signatures are already shaped like
-their eventual repository equivalents, so swapping the backing store later
-should be a constructor change for callers, not an API rewrite.
-`app/iomt_simulator/registry.py`'s `DeviceRegistry` (Phase 2) follows the
-same pattern and predates this directory.
+
+**Post-Phase-15 update:** `incidents.py`, `agent_traces.py`,
+`recovery_results.py`, and `responses.py` each now also define a real,
+Postgres-backed `Postgres*` class alongside their original in-memory one —
+same public methods, same return types, backed by a real table
+(`app/models/orm.py`) via a sync SQLAlchemy session (`app/core/db.py`)
+instead of a dict/list. `Settings.repository_backend` ("memory" by default,
+"postgres" to use the real tables — see `app/core/config.py`) picks which
+one `app/core/app_factory.py`'s `_register_state` actually constructs.
+`telemetry_events.py` and `log_capture.py` are deliberately NOT part of
+this migration: `NetworkEventStore`/`TelemetryStore` are Section 8's
+*separate* TimescaleDB-hypertable category (chunking, retention, time-range
+queries — a genuinely different design task), and `log_capture.py` was
+never named in Section 8 as persisted storage. Both remain in-memory only,
+not silently forgotten — see `app/models/orm.py`'s module docstring for the
+full scope disclosure, and `docs/postgres-migration.md` for the real
+verification numbers behind this.
+
+`app/iomt_simulator/registry.py`'s `DeviceRegistry` (Phase 2) still follows
+the original in-memory-only pattern and predates this directory — it is
+live simulation state, not a persisted catalog, so it is out of scope for
+the Postgres migration too (same docstring, same reasoning).

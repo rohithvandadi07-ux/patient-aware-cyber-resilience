@@ -24,3 +24,15 @@ its own origin, so this is required for the browser to let it call this API
 at all, not an optional hardening step — see `tests/test_cors.py`.
 `cors_allowed_origins` accepts either a JSON array or a comma-separated
 string from the environment (`CORS_ALLOWED_ORIGINS`).
+
+**Post-Phase-15 addition: `db.py`.** Sync SQLAlchemy engine/session
+plumbing (`Base`, `build_engine`, `build_session_factory`,
+`create_all_tables`, `session_scope`) for the real Postgres-backed
+repositories added after Phase 15 (`app/repositories/*.py`'s `Postgres*`
+classes, `app/models/orm.py`). `_register_state` now branches on the new
+`Settings.repository_backend` ("memory" default, "postgres" to build a
+real engine via `db.py`, create tables, and construct every `Postgres*`
+repository instead of its in-memory counterpart) — see `db.py`'s own
+docstring for why this uses a sync driver (`psycopg`) rather than the
+`asyncpg` already declared in `requirements.txt` since Phase 1, and why
+there's no Alembic migration tool yet.

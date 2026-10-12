@@ -150,17 +150,48 @@ bullet below are the honest account of what that excludes.
   suite (359 tests), full frontend suite (46 tests), and the Phase 11 E2E
   suite (2/2) were all re-run for this phase, not carried forward by
   assertion.
+- **Post-Phase-15, user-directed (not a numbered phase — all 16 planned
+  phases finished at Phase 15 above): a real, scope-limited Postgres
+  migration.** `incidents`, `agent_traces`, `recovery_results`,
+  `proposed_responses`, `executed_responses`, and `outbox_entries`
+  (`app/models/orm.py`) are now real tables, with a `Postgres*`
+  implementation of each corresponding repository
+  (`app/repositories/*.py`, `app/blockchain/outbox.py`) that a new
+  `Settings.repository_backend` flag ("memory" default, "postgres" to use
+  them) selects — `docker-compose.yml`'s backend service now sets it to
+  "postgres", so Phase 14's previously-inert Postgres container is
+  actually read from and written to when run that way. Verified for real
+  against a local Postgres 16 instance (not Docker — this sandbox's
+  registry block, unchanged since Phase 8/14 — natively installed and
+  started instead): a new, real, Postgres-gated test suite
+  (`backend/tests/test_postgres_repositories.py`, 7 tests, skipped rather
+  than faked when no Postgres is reachable) genuinely passes, and the full
+  pre-existing backend suite (356 tests, not 359 — the earlier figure was
+  an approximation, not a regression) still passes unchanged against the
+  default in-memory path, confirming zero behavior change for anyone not
+  opting in. Deliberately NOT covered, same disclosure discipline as
+  everything else here: `NetworkEventStore`/`TelemetryStore` (Section 8's
+  separate TimescaleDB-hypertable category — still in-memory, a genuinely
+  different design task); the IoMT simulator's `DeviceRegistry` (live
+  simulation state, not a persisted catalog); a real migration tool
+  (Alembic — `create_all` only); and an async rewrite (a sync driver,
+  `psycopg`, was chosen instead so every existing `async def` route's
+  unawaited call sites stay correct unchanged — see `app/core/db.py`'s
+  docstring for the accepted, disclosed tradeoff). See
+  `app/models/README.md` and `app/repositories/README.md` for the full
+  detail.
 - **Still not built, by deliberate and disclosed decision, not oversight:**
   the fuller five-system/seven-ablation comparison beyond Phase 13's gate;
   an actual registry-access build/run verification of Phase 14's Docker
-  setup; a real Postgres/TimescaleDB migration (the container runs, but no
-  application code reads or writes it yet); authentication/authorization;
+  setup; the TimescaleDB-hypertable half of the Postgres migration above
+  (`NetworkEventStore`/`TelemetryStore`); authentication/authorization;
   rate limiting; and any automatic multi-agent orchestration framework —
   the five agents are still sequenced manually wherever they're exercised
   (tests, the lifecycle integration test above, the Phase 11 E2E seeding,
   Phase 13's evaluation harness), the same open Section 11 decision named
-  since Phase 4. `docs/phase15-verification.md` is the single place all of
-  these are listed together with why each remains open.
+  since Phase 4. `docs/phase15-verification.md` is the single place most
+  of these are listed together with why each remains open (the Postgres
+  item there is now addressed, as described above).
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.

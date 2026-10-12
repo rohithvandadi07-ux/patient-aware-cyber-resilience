@@ -59,7 +59,25 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/patient_aware_cyber_resilience",
         description="Relational + time-series store. TimescaleDB runs as an extension on this same "
-        "Postgres instance.",
+        "Postgres instance. `repository_backend='postgres'` connects here via a sync driver "
+        "(`app/core/db.py` converts this URL's dialect accordingly) -- this setting is still the "
+        "single source of truth for where the database is, regardless of which driver talks to it.",
+    )
+    repository_backend: str = Field(
+        default="memory",
+        description="'memory' | 'postgres' -- which repository implementation backs incidents, "
+        "agent traces, recovery results, proposed/executed responses, and the blockchain outbox "
+        "(app/core/app_factory.py's `_register_state`). Defaults to 'memory' because most "
+        "environments running this app (including its own default dev/test runs and CI, which "
+        "brings up no Postgres service) have no Postgres reachable at `database_url`; the existing "
+        "359 backend tests exercise the in-memory repositories exclusively and are unaffected by "
+        "this setting either way. Set to 'postgres' once a real Postgres is reachable (docker-compose "
+        "provides one; see `app/core/db.py` for the sync-driver tradeoff this mode accepts) to get "
+        "real durable storage instead of an in-process dict/list that a process restart discards. "
+        "Mirrors `fabric_client_mode`'s mock-default-until-the-real-thing-is-up pattern below. Does "
+        "NOT cover `NetworkEventStore`/`TelemetryStore` (still in-memory; a separate, later "
+        "TimescaleDB-hypertable task) or the IoMT simulator's `DeviceRegistry` (live simulation "
+        "state, not a persisted catalog) -- see `app/models/orm.py`'s module docstring.",
     )
 
     # --- Blockchain (L9, architecture spec Section 14) ---

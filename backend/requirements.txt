@@ -11,6 +11,11 @@ pydantic==2.10.4
 pydantic-settings==2.7.1
 asyncpg==0.30.0
 sqlalchemy==2.0.36
+# Sync driver used by the actual Postgres-backed repositories
+# (Settings.repository_backend="postgres"; see app/core/db.py's docstring
+# for why sync rather than asyncpg, despite asyncpg being declared above
+# since Phase 1). pip-audit: 0 known vulnerabilities as of this pin.
+psycopg[binary]==3.3.6
 
 # --- Cybersecurity detection engine (Phase 3) ---
 # Baselines per architecture spec Section 10: Random Forest / XGBoost before any

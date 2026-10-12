@@ -1,4 +1,6 @@
-"""In-memory outbox repository for the five chaincode *write* operations.
+"""Outbox repository for the five chaincode *write* operations -- in-memory
+by default, a real Postgres-backed implementation available via
+`Settings.repository_backend = "postgres"`.
 
 Architecture spec Section 14: "every off-chain record ... carries a
 nullable `chain_tx_id` column, populated once the outbox worker ... confirms
@@ -7,10 +9,13 @@ committed,' visible as a pending-provenance state on the dashboard -- never
 silently hidden." The real `chain_tx_id` column lives on each of Phase 9's
 Postgres tables (`incidents`, `decisions`, etc.), not here; this module is
 the queue an async worker (`outbox_worker.py`) drains to actually commit
-each entry's provenance to the chain, in the same in-memory-now,
-Postgres-later pattern as every other repository in this codebase
-(`app/repositories/*.py`) -- swapping this for a Postgres-backed queue
-later is a constructor change, not an API rewrite.
+each entry's provenance to the chain. `OutboxRepository` (below) was the
+in-memory stand-in; `PostgresOutboxRepository`, added later, is the real
+Postgres-backed one -- same public methods, backed by the
+`outbox_entries` table (`app/models/orm.py`) instead of a dict. The five
+typed `enqueue_*` helpers at the bottom of this file take a repository
+instance as their first argument and call only `.enqueue(...)`, so they
+work unchanged against either repository.
 """
 
 from __future__ import annotations
@@ -20,6 +25,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.db import session_scope
+from app.models.orm import OutboxEntryORM
 from app.schemas.blockchain import (
     ApprovalProvenance,
     DecisionProvenance,
@@ -140,3 +149,114 @@ def enqueue_response(repository: OutboxRepository, provenance: ResponseProvenanc
 
 def enqueue_recovery(repository: OutboxRepository, provenance: RecoveryProvenance) -> OutboxEntry:
     return repository.enqueue(OutboxRecordType.RECOVERY, provenance.model_dump(mode="json"))
+
+
+def _entry_from_row(row: OutboxEntryORM) -> OutboxEntry:
+    return OutboxEntry(
+        id=row.id,
+        record_type=OutboxRecordType(row.record_type),
+        payload=row.payload,
+        created_at=row.created_at,
+        status=OutboxStatus(row.status),
+        chain_tx_id=row.chain_tx_id,
+        attempts=row.attempts,
+        last_error=row.last_error,
+        updated_at=row.updated_at,
+    )
+
+
+class PostgresOutboxRepository:
+    """Real, Postgres-backed `OutboxRepository` -- same public interface,
+    backed by the `outbox_entries` table (`app/models/orm.py`) instead of a
+    dict. One short-lived session per call (`session_scope`), matching
+    `PostgresIncidentRepository`'s pattern. `id` is the table's real
+    autoincrementing primary key (assigned by Postgres on `flush()`),
+    taking over from the in-memory repository's `itertools.count`.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def enqueue(self, record_type: OutboxRecordType, payload: dict[str, Any]) -> OutboxEntry:
+        with session_scope(self._session_factory) as session:
+            now = datetime.now(UTC)
+            row = OutboxEntryORM(
+                record_type=record_type.value,
+                payload=payload,
+                created_at=now,
+                status=OutboxStatus.PENDING.value,
+                updated_at=now,
+            )
+            session.add(row)
+            session.flush()
+            return _entry_from_row(row)
+
+    def get(self, entry_id: int) -> OutboxEntry:
+        with session_scope(self._session_factory) as session:
+            row = session.get(OutboxEntryORM, entry_id)
+            if row is None:
+                raise OutboxEntryNotFoundError(entry_id)
+            return _entry_from_row(row)
+
+    def list_pending(self) -> list[OutboxEntry]:
+        with session_scope(self._session_factory) as session:
+            rows = (
+                session.query(OutboxEntryORM)
+                .filter(OutboxEntryORM.status == OutboxStatus.PENDING.value)
+                .all()
+            )
+            return [_entry_from_row(row) for row in rows]
+
+    def list_for_incident(self, incident_id: str) -> list[OutboxEntry]:
+        with session_scope(self._session_factory) as session:
+            rows = session.query(OutboxEntryORM).all()
+            return [
+                _entry_from_row(row)
+                for row in rows
+                if row.payload.get("incident_id") == incident_id
+            ]
+
+    def list_all(self) -> list[OutboxEntry]:
+        with session_scope(self._session_factory) as session:
+            rows = session.query(OutboxEntryORM).all()
+            return [_entry_from_row(row) for row in rows]
+
+    def mark_confirmed(self, entry_id: int, chain_tx_id: str) -> OutboxEntry:
+        with session_scope(self._session_factory) as session:
+            row = session.get(OutboxEntryORM, entry_id)
+            if row is None:
+                raise OutboxEntryNotFoundError(entry_id)
+            row.status = OutboxStatus.CONFIRMED.value
+            row.chain_tx_id = chain_tx_id
+            row.updated_at = datetime.now(UTC)
+            session.flush()
+            return _entry_from_row(row)
+
+    def mark_failed(self, entry_id: int, error: str) -> OutboxEntry:
+        with session_scope(self._session_factory) as session:
+            row = session.get(OutboxEntryORM, entry_id)
+            if row is None:
+                raise OutboxEntryNotFoundError(entry_id)
+            row.status = OutboxStatus.FAILED.value
+            row.last_error = error
+            row.updated_at = datetime.now(UTC)
+            session.flush()
+            return _entry_from_row(row)
+
+    def record_retry_attempt(self, entry_id: int, error: str) -> OutboxEntry:
+        with session_scope(self._session_factory) as session:
+            row = session.get(OutboxEntryORM, entry_id)
+            if row is None:
+                raise OutboxEntryNotFoundError(entry_id)
+            row.attempts += 1
+            row.last_error = error
+            row.updated_at = datetime.now(UTC)
+            session.flush()
+            return _entry_from_row(row)
+
+    def clear(self) -> None:
+        """Test-only convenience, mirroring the in-memory repository's
+        `clear()` -- deletes every row in `outbox_entries` rather than
+        dropping/recreating the table."""
+        with session_scope(self._session_factory) as session:
+            session.query(OutboxEntryORM).delete()
