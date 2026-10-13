@@ -34,6 +34,22 @@
   --color-danger-600: #dc2626;
   --color-danger-700: #b91c1c;
 
+  /*
+   * Fixed status palette for incident/threat severity (ImpactLevel: low,
+   * medium, high, critical) and derived fleet/device health states --
+   * reserved for status meaning only, never reused as a categorical series
+   * color. Mode-invariant by design: same four steps carry enough contrast
+   * on both light and dark chart surfaces, so severity is never recolored
+   * per theme. Because `warning`/`serious` sit below 3:1 text contrast on a
+   * light surface by design, every use pairs the swatch with a visible text
+   * label -- color is never the only carrier of which severity a thing is.
+   */
+  --color-severity-good: #0ca30c;
+  --color-severity-warning: #fab219;
+  --color-severity-serious: #ec835a;
+  --color-severity-critical: #d03b3b;
+  --color-severity-unknown: #9ca3af;
+
   --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
 }

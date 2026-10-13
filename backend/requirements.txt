@@ -25,3 +25,9 @@ xgboost==2.1.3
 pandas==2.2.3
 numpy==2.2.1
 joblib==1.4.2
+
+# --- Real LLM backend (post-Phase-15, user-directed) ---
+# Settings.llm_backend="gemini" (default stays "mock" -- see
+# app/agents/llm_client.py's GeminiLLMClient docstring). Google's official
+# SDK for the Gemini API; pinned to the version installed and tested here.
+google-genai==2.30.0

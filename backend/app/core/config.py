@@ -55,6 +55,33 @@ class Settings(BaseSettings):
         "(comma-separated, or a JSON array) for a real deployment's actual frontend origin.",
     )
 
+    # --- Authentication/authorization (post-Phase-15, user-directed) ---
+    # Carried-forward gap since Phase 9 (docs/security-checklist.md Section
+    # 6: "designed-for, not implemented") -- this closes it. Mirrors every
+    # other mock/opt-in flag above: `auth_enabled` defaults to `False` so
+    # every pre-existing test and the default dev experience are completely
+    # unaffected; set it `True` (with real keys configured) for anything
+    # resembling a real deployment.
+    auth_enabled: bool = Field(
+        default=False,
+        description="When true, every route except /health requires a valid X-API-Key header "
+        "(see app/core/auth.py), resolved against api_keys below to an identity + role. When "
+        "false (the default), every request is treated as an implicit 'approver'-role principal "
+        "named 'anonymous (auth disabled)' -- the same permissive default this app has always had, "
+        "just now named explicitly rather than having no concept of a principal at all.",
+    )
+    api_keys: dict[str, tuple[str, str]] = Field(
+        default_factory=dict,
+        description="API_KEY -> (role, identity) map. role is one of 'viewer' | 'operator' | "
+        "'approver' (app/core/auth.py's _ROLE_RANK -- viewer can read, operator can trigger "
+        "/incidents/{id}/investigate without auto-approving, approver can additionally approve/"
+        "execute responses and auto-approve an investigation cycle). Set via the API_KEYS "
+        "environment variable as 'key1:role1:identity1,key2:role2:identity2' -- never committed; "
+        "see .env.example. Empty by default, which is only safe because auth_enabled defaults to "
+        "False; turning auth_enabled on with no keys configured locks out every route but /health, "
+        "deliberately (fail closed, not open).",
+    )
+
     # --- Database (PostgreSQL + TimescaleDB extension) ---
     database_url: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/patient_aware_cyber_resilience",
@@ -102,6 +129,31 @@ class Settings(BaseSettings):
         "network is actually running, to get real on-chain commits instead of an in-memory double.",
     )
 
+    # --- Agent LLM backend (post-Phase-15, user-directed) ---
+    llm_backend: str = Field(
+        default="mock",
+        description="'mock' | 'gemini' -- which LLMClient implementation the orchestrator "
+        "(app/orchestration/orchestrator.py) constructs for the five agents to call through "
+        "(app/agents/llm_client.py). Mirrors fabric_client_mode/repository_backend's "
+        "mock-default-until-opted-in pattern. Defaults to 'mock' because most environments "
+        "(including this app's own default dev/test runs, and every pre-existing agent test) "
+        "have no API key configured; app_factory.py falls back to 'mock' with a logged warning "
+        "even when 'gemini' is requested but gemini_api_key is empty, rather than constructing a "
+        "client that would fail on its first real call.",
+    )
+    gemini_api_key: str = Field(
+        default="",
+        description="API key for GeminiLLMClient, read from the GEMINI_API_KEY environment "
+        "variable. Get one at https://aistudio.google.com/app/apikey. Never committed -- see "
+        ".env.example. Empty by default; llm_backend='gemini' with this unset falls back to mock.",
+    )
+    gemini_model: str = Field(
+        default="gemini-2.0-flash",
+        description="Gemini model name passed to GeminiLLMClient. gemini-2.0-flash is Google's "
+        "fast/cheap tier, adequate for this project's structured-JSON agent outputs; override via "
+        "GEMINI_MODEL for a different tier.",
+    )
+
     # --- Logging ---
     log_level: str = Field(default="INFO", description="DEBUG | INFO | WARNING | ERROR | CRITICAL")
     log_json: bool = Field(
@@ -127,6 +179,35 @@ class Settings(BaseSettings):
         if stripped.startswith("["):
             return json.loads(stripped)
         return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+
+    @field_validator("api_keys", mode="before")
+    @classmethod
+    def _parse_api_keys(cls, value: object) -> object:
+        """Same friendlier-than-raw-JSON `.env` shape `cors_allowed_origins`
+        parses above: 'key1:role1:identity1,key2:role2:identity2' from the
+        environment, split into {key: (role, identity)}. Raises ValueError
+        (surfaced by pydantic-settings as a startup config error, not a
+        silent skip) on a malformed entry -- a typo'd key here should fail
+        loudly at startup, not quietly grant no access or the wrong role."""
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        if not stripped:
+            return {}
+        parsed: dict[str, tuple[str, str]] = {}
+        for entry in stripped.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            parts = entry.split(":")
+            if len(parts) != 3:
+                raise ValueError(
+                    f"API_KEYS entry {entry!r} must be 'key:role:identity' -- got {len(parts)} "
+                    "colon-separated parts"
+                )
+            key, role, identity = (p.strip() for p in parts)
+            parsed[key] = (role, identity)
+        return parsed
 
     @property
     def is_production(self) -> bool:

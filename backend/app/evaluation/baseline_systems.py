@@ -1,4 +1,4 @@
-"""Phase 13 -- the three response "systems" compared at scale.
+"""Phase 13 -- the five response "systems" (and six ablations) compared at scale.
 
 Architecture spec Section 18 adopts the brief's five-system baseline
 progression (detection-only -> detection+fixed-response -> detection+agentic
@@ -44,6 +44,33 @@ model, scored on its actual held-out test split (see
 ``run_baseline_comparison.py``). The risk/policy decision for ``full_system``
 is made by the real ``RuleBasedRiskModel`` and ``PolicyEngine`` classes --
 this module calls them, it does not reimplement or approximate their rules.
+
+Extended for the architecture spec's full Section 18 progression (five named
+systems, not just three) and its six "without-X" ablations:
+
+  - ``detection_plus_agentic_ai``: runs the same disclosed agent stand-ins as
+    ``full_system`` (``threat_assessment_for``, ``clinical_context_for``) to
+    get a reasoned threat/clinical read on the incident, but then picks
+    whether to execute via a simple, explicitly-named heuristic over those
+    two outputs (see ``decide_detection_plus_agentic_ai``) instead of calling
+    ``RuleBasedRiskModel``/``PolicyEngine`` at all. This is the architecture's
+    third named system ("detection + Agentic AI") -- agent reasoning without
+    the deterministic risk/policy backstop.
+  - ``detection_plus_risk_engine``: the inverse -- skips the agent layer
+    entirely (no ``clinical_context_for`` call; a fixed stub
+    ``ClinicalContext`` stands in for it, deliberately blind to the trial's
+    real device context) and feeds the detector's output straight into the
+    real ``RuleBasedRiskModel``/``PolicyEngine``. This is the architecture's
+    fourth named system ("detection + deterministic risk engine").
+  - Six ablations of ``full_system`` (``decide_full_system_variant`` and the
+    two functions it reuses): ``without_healthcare_context``,
+    ``without_clinical_criticality``, ``without_response_impact_assessment``,
+    ``without_agentic_ai``, ``without_blockchain``,
+    ``without_recovery_verification``. Each genuinely disables the named
+    component rather than only renaming an unchanged computation -- see each
+    function's own docstring for exactly what is turned off and why, and
+    ``run_baseline_comparison.py`` / ``evaluation/phase13_baseline_comparison.md``
+    for the real, measured effect of each.
 """
 
 from __future__ import annotations
@@ -82,7 +109,23 @@ _DISRUPTIVE_ACTIONS = frozenset({_SEVERE_ACTION, _MODERATE_ACTION})
 class SystemName(StrEnum):
     DETECTION_ONLY = "detection_only"
     FIXED_RESPONSE = "fixed_response"
+    DETECTION_PLUS_AGENTIC_AI = "detection_plus_agentic_ai"
+    DETECTION_PLUS_RISK_ENGINE = "detection_plus_risk_engine"
     FULL_SYSTEM = "full_system"
+
+
+class AblationName(StrEnum):
+    """The six "without-X" ablations Section 18 names, each a genuine variant
+    of the ``full_system`` trial path with exactly one named component turned
+    off (see ``decide_full_system_variant`` and the two functions it reuses
+    for ``WITHOUT_AGENTIC_AI``/``WITHOUT_BLOCKCHAIN``)."""
+
+    WITHOUT_HEALTHCARE_CONTEXT = "without_healthcare_context"
+    WITHOUT_CLINICAL_CRITICALITY = "without_clinical_criticality"
+    WITHOUT_RESPONSE_IMPACT_ASSESSMENT = "without_response_impact_assessment"
+    WITHOUT_AGENTIC_AI = "without_agentic_ai"
+    WITHOUT_BLOCKCHAIN = "without_blockchain"
+    WITHOUT_RECOVERY_VERIFICATION = "without_recovery_verification"
 
 
 @dataclass(frozen=True)
@@ -127,7 +170,7 @@ class SystemDecision:
     in the loop, is never granted (matching the real system's own behavior:
     an incident awaiting approval does not execute)."""
 
-    system: SystemName
+    system: SystemName | AblationName
     detection: DetectionOutcome
     context: DeviceContext
     proposed_action: ResponseActionCategory | None
@@ -191,14 +234,54 @@ def propose_action(detection: DetectionOutcome) -> ResponseActionCategory:
     return _SEVERE_ACTION if severity == ImpactLevel.CRITICAL else _MODERATE_ACTION
 
 
-def clinical_context_for(incident_id: str, device: DeviceContext) -> ClinicalContext:
+# Flat/default values the ablations below substitute for a genuinely computed
+# one. MEDIUM is chosen for both (rather than LOW or HIGH) specifically so the
+# ablation is a real "stop discriminating" change, not a disguised "assume
+# everything is safe" or "assume everything is dangerous" -- either of which
+# would bias the comparison instead of isolating the effect of removing the
+# named component.
+_FLAT_DEFAULT_CLINICAL_IMPACT = ImpactLevel.MEDIUM
+_FLAT_DEFAULT_CRITICALITY = DeviceCriticality.MEDIUM
+
+# Stub clinical context `detection_plus_risk_engine` feeds the real risk/policy
+# engine when it skips the agent layer entirely -- fixed for every trial,
+# deliberately uncorrelated with any trial's real `DeviceContext`, which is
+# the whole point of the ablation (the risk/policy engine's rule tables are
+# real, but they are reasoning about a context that was never actually
+# looked up for this incident).
+_STUB_CLINICAL_CONTEXT_KWARGS = {
+    "device_criticality": _FLAT_DEFAULT_CRITICALITY,
+    "patient_dependency": False,
+    "clinical_impact_level": _FLAT_DEFAULT_CLINICAL_IMPACT,
+}
+
+
+def clinical_context_for(
+    incident_id: str,
+    device: DeviceContext,
+    *,
+    flat_clinical_impact: ImpactLevel | None = None,
+    flat_criticality: DeviceCriticality | None = None,
+) -> ClinicalContext:
     """Disclosed stand-in for the Healthcare Context Agent: `clinical_impact_level`
     has no ground-truth source of its own in this project (no real clinical
     simulation exists), so it is derived, honestly and simply, from the two
     fields that do have ground truth -- never an independent arbitrary value.
     Patient-dependent devices are always scored at least HIGH clinical impact;
-    otherwise a HIGH-criticality device scores MEDIUM and anything else LOW."""
-    if device.patient_dependency:
+    otherwise a HIGH-criticality device scores MEDIUM and anything else LOW.
+
+    `flat_clinical_impact`/`flat_criticality` are `None` for every existing
+    caller (`full_system`'s own behaviour is completely unchanged) and are
+    only ever passed by `decide_full_system_variant`'s
+    ``without_healthcare_context``/``without_clinical_criticality``
+    ablations, to substitute a fixed value for the one this function would
+    otherwise compute from `device` -- i.e. to genuinely turn the named
+    computation off rather than merely relabel it."""
+    criticality = flat_criticality if flat_criticality is not None else device.device_criticality
+
+    if flat_clinical_impact is not None:
+        impact = flat_clinical_impact
+    elif device.patient_dependency:
         impact = ImpactLevel.HIGH
     elif device.device_criticality == DeviceCriticality.HIGH:
         impact = ImpactLevel.MEDIUM
@@ -206,7 +289,7 @@ def clinical_context_for(incident_id: str, device: DeviceContext) -> ClinicalCon
         impact = ImpactLevel.LOW
     return ClinicalContext(
         incident_id=incident_id,
-        device_criticality=device.device_criticality,
+        device_criticality=criticality,
         patient_dependency=device.patient_dependency,
         clinical_impact_level=impact,
     )
@@ -318,6 +401,215 @@ def decide_full_system(
     )
 
 
+def decide_detection_plus_agentic_ai(
+    detection: DetectionOutcome,
+    context: DeviceContext,
+    incident_id: str,
+) -> SystemDecision:
+    """Architecture's third named system: "detection + Agentic AI". Runs the
+    same disclosed stand-ins for the Threat Reasoning and Healthcare Context
+    Agents that `full_system` uses (`threat_assessment_for`,
+    `clinical_context_for` -- see module docstring for what "agent" means
+    here: no real LLM backend exists anywhere in this codebase, so these are
+    deterministic, ground-truth-derived restatements, not invented
+    reasoning), but then decides whether to execute from the agents' own
+    output alone, through a small, explicitly-named heuristic -- it never
+    calls `RuleBasedRiskModel`/`PolicyEngine` at all. That is exactly what
+    distinguishes this system from `full_system`: agentic reasoning without
+    the deterministic risk/policy backstop.
+
+    Heuristic (disclosed, not a project-specified rule -- there is no
+    Section-numbered spec for "Agentic AI acting alone" to implement
+    literally): human approval is required whenever the Healthcare Context
+    stand-in reports `patient_dependency=True` *and* the Threat Reasoning
+    stand-in's `severity` is HIGH or CRITICAL, OR whenever
+    `clinical_impact_level` itself is HIGH or CRITICAL -- the agents' own
+    worst-case signal is enough to hold the action without a formal risk
+    score; otherwise the proposed action executes autonomously. This is
+    deliberately a simpler, less conservative gate than the Policy Engine's
+    rule table (it has no check tied to the *specific* action category the
+    way Section 13 rule 3 does), so a real difference from `full_system` is
+    expected -- that gap is the point of comparing the two.
+    """
+    if not detection.fired:
+        return SystemDecision(
+            system=SystemName.DETECTION_PLUS_AGENTIC_AI,
+            detection=detection,
+            context=context,
+            proposed_action=None,
+            requires_human_approval=None,
+            executed_action=None,
+        )
+
+    action = propose_action(detection)
+    threat = threat_assessment_for(incident_id, detection)
+    clinical_context = clinical_context_for(incident_id, context)
+
+    high_severity = threat.severity in (ImpactLevel.HIGH, ImpactLevel.CRITICAL)
+    high_impact = clinical_context.clinical_impact_level in (ImpactLevel.HIGH, ImpactLevel.CRITICAL)
+    requires_human_approval = (clinical_context.patient_dependency and high_severity) or high_impact
+
+    return SystemDecision(
+        system=SystemName.DETECTION_PLUS_AGENTIC_AI,
+        detection=detection,
+        context=context,
+        proposed_action=action,
+        requires_human_approval=requires_human_approval,
+        executed_action=None if requires_human_approval else action,
+    )
+
+
+def decide_detection_plus_risk_engine(
+    detection: DetectionOutcome,
+    context: DeviceContext,
+    incident_id: str,
+    *,
+    risk_model: RuleBasedRiskModel,
+    policy_engine: PolicyEngine,
+) -> SystemDecision:
+    """Architecture's fourth named system: "detection + deterministic risk
+    engine". The inverse of `decide_detection_plus_agentic_ai` above: skips
+    the agent layer entirely -- `clinical_context_for` (the Healthcare
+    Context Agent stand-in) is never called for this trial's real `context`.
+    A fixed stub `ClinicalContext` (`_STUB_CLINICAL_CONTEXT_KWARGS`) is used
+    instead, deliberately uncorrelated with the trial's actual device
+    criticality or patient dependency, and fed straight into the real
+    `RuleBasedRiskModel`/`PolicyEngine` -- exactly as `full_system` does,
+    just reasoning about a context nobody actually looked up for this
+    incident.
+
+    `threat_assessment_for` is still called: in this codebase it is not
+    independent agent reasoning (see module docstring) but a direct,
+    deterministic restatement of the detector's own predicted label and
+    confidence into the `ThreatAssessment` schema the Risk Engine requires
+    as input -- there is no agent step there left to skip.
+    """
+    if not detection.fired:
+        return SystemDecision(
+            system=SystemName.DETECTION_PLUS_RISK_ENGINE,
+            detection=detection,
+            context=context,
+            proposed_action=None,
+            requires_human_approval=None,
+            executed_action=None,
+        )
+
+    action = propose_action(detection)
+    threat = threat_assessment_for(incident_id, detection)
+    stub_context = ClinicalContext(incident_id=incident_id, **_STUB_CLINICAL_CONTEXT_KWARGS)
+
+    risk_score = risk_model.calculate_risk(
+        threat,
+        stub_context,
+        [
+            CandidateAction(
+                action_category=action, description="Phase 13 evaluation candidate (stub context)"
+            )
+        ],
+    )
+    decision = policy_engine.evaluate_action(risk_score, stub_context, action)
+
+    return SystemDecision(
+        system=SystemName.DETECTION_PLUS_RISK_ENGINE,
+        detection=detection,
+        context=context,
+        proposed_action=action,
+        requires_human_approval=decision.requires_human_approval,
+        executed_action=None if decision.requires_human_approval else action,
+        policy_rule_id=decision.policy_rule_id,
+    )
+
+
+def decide_full_system_variant(
+    detection: DetectionOutcome,
+    context: DeviceContext,
+    incident_id: str,
+    *,
+    risk_model: RuleBasedRiskModel,
+    policy_engine: PolicyEngine,
+    ablation: AblationName,
+    flat_clinical_impact: ImpactLevel | None = None,
+    flat_criticality: DeviceCriticality | None = None,
+    disable_response_impact_assessment: bool = False,
+) -> SystemDecision:
+    """Generalized `full_system` decision path used by the three risk-formula
+    ablations (`WITHOUT_HEALTHCARE_CONTEXT`, `WITHOUT_CLINICAL_CRITICALITY`,
+    `WITHOUT_RESPONSE_IMPACT_ASSESSMENT`): identical to `decide_full_system`
+    in every other respect (same `propose_action`, same real
+    `RuleBasedRiskModel`/`PolicyEngine` call), with exactly one named
+    computation genuinely disabled per call:
+
+      - `flat_clinical_impact` forces every trial's `clinical_impact_level`
+        to the same fixed value instead of letting `clinical_context_for`
+        derive it from the device -- "no Healthcare Context Agent".
+      - `flat_criticality` forces every trial's `device_criticality` (as fed
+        to the risk/policy engine) to the same fixed value -- "no clinical
+        criticality": `score_clinical_risk`'s criticality base and
+        `score_response_impact`'s `high_criticality_dependent` check both
+        stop discriminating by the device's real criticality.
+      - `disable_response_impact_assessment` overwrites every entry of the
+        *real* `RiskScore.response_impact` (computed first, by the real
+        `score_response_impact` rule) to `ImpactLevel.LOW` immediately
+        afterward -- i.e. the system behaves as if that term had never been
+        assessed at all (it never escalates routing because of how
+        disruptive the action is), while `cyber_risk`/`clinical_risk` are
+        untouched. `risk_score.incident_id`/`cyber_risk`/`clinical_risk`/
+        `explanation` all still come from the real scoring call; only the
+        one named field is overwritten after the fact.
+
+    `decision.context` below is always the trial's *real* `DeviceContext`
+    (never the flattened one fed to the engine) -- the unsafe/unnecessary
+    metrics in `run_baseline_comparison.py` must judge every system against
+    the same ground truth, or a system that is blind to real risk could
+    never be shown to actually be more unsafe.
+    """
+    if not detection.fired:
+        return SystemDecision(
+            system=ablation,
+            detection=detection,
+            context=context,
+            proposed_action=None,
+            requires_human_approval=None,
+            executed_action=None,
+        )
+
+    action = propose_action(detection)
+    threat = threat_assessment_for(incident_id, detection)
+    clinical_context = clinical_context_for(
+        incident_id,
+        context,
+        flat_clinical_impact=flat_clinical_impact,
+        flat_criticality=flat_criticality,
+    )
+
+    risk_score = risk_model.calculate_risk(
+        threat,
+        clinical_context,
+        [
+            CandidateAction(
+                action_category=action, description=f"Phase 13 ablation candidate ({ablation.value})"
+            )
+        ],
+    )
+
+    if disable_response_impact_assessment:
+        risk_score = risk_score.model_copy(
+            update={"response_impact": {k: ImpactLevel.LOW for k in risk_score.response_impact}}
+        )
+
+    decision = policy_engine.evaluate_action(risk_score, clinical_context, action)
+
+    return SystemDecision(
+        system=ablation,
+        detection=detection,
+        context=context,
+        proposed_action=action,
+        requires_human_approval=decision.requires_human_approval,
+        executed_action=None if decision.requires_human_approval else action,
+        policy_rule_id=decision.policy_rule_id,
+    )
+
+
 def is_high_stakes(context: DeviceContext) -> bool:
     """HIGH-criticality and patient-dependent -- the exact combination
     Section 13's rule 3 and Scenario B both single out as the one where an
@@ -351,3 +643,73 @@ def is_unnecessary_isolation(decision: SystemDecision) -> bool:
         and decision.detection.is_false_positive
         and decision.executed_action in _DISRUPTIVE_ACTIONS
     )
+
+
+# ---------------------------------------------------------------------------
+# WITHOUT_BLOCKCHAIN and WITHOUT_RECOVERY_VERIFICATION
+#
+# Neither ablation changes a single line of the decision path above. Stated
+# plainly rather than silently glossed over:
+#
+# WITHOUT_BLOCKCHAIN: nothing in `baseline_systems.py` or
+# `run_baseline_comparison.py` ever calls `app/blockchain/` (no
+# `OutboxWorker`, no `MockFabricClient`/`FabricClient`, no provenance write)
+# for *any* system, including `full_system` -- provenance recording is an
+# audit/evidence concern (Section 14) that happens alongside an incident's
+# lifecycle in the real API path (`backend/tests/test_blockchain_integration.py`
+# exercises that), not a step this batch decision-logic harness was ever
+# wired through. So "with blockchain" and "without blockchain" are, in this
+# harness, the exact same code path -- `run_baseline_comparison.py` reuses
+# `decide_full_system`'s own decisions for the `WITHOUT_BLOCKCHAIN` ablation
+# rather than introducing a second, duplicate call that could only ever
+# produce identical numbers. This is reported as a confirmed, honest "no
+# effect by construction" finding, not measured as if it were an open
+# question.
+#
+# WITHOUT_RECOVERY_VERIFICATION: Recovery verification (Section 7 step 12,
+# `app/agents/recovery_verification.py` + `app/recovery/engine.py`) is a
+# *post-execution* check -- it re-examines device/network state after a
+# response has already run, which this harness's per-row trials have no
+# model of (each trial is one independent classifier row, not a
+# before/after device-state simulation; see `datasets/LICENSE_NOTES.md` /
+# `synthetic_data.py`). So this ablation cannot change
+# `unsafe_autonomous_action_rate` or `unnecessary_isolation_rate` either --
+# both are measured at the decision step, before any recovery check would
+# run. What it *can* measure honestly: for every trial where `full_system`
+# executed an action autonomously, would a real Recovery Verification Agent
+# call have flagged it for reinvestigation rather than letting it close as
+# resolved? `recovery_result_would_require_reinvestigation` below is a
+# disclosed, deterministic stand-in for that agent (same category of
+# simplification as `threat_assessment_for`/`clinical_context_for` above,
+# extended to this one remaining agent) -- "without recovery verification"
+# means every one of those executed trials is instead marked resolved
+# unconditionally (`run_baseline_comparison.py`'s literal behaviour, since it
+# never calls this function for that ablation), silently losing exactly the
+# trials this function flags.
+def recovery_result_would_require_reinvestigation(
+    detection: DetectionOutcome, context: DeviceContext, decision: SystemDecision
+) -> bool:
+    """Disclosed stand-in for the Recovery Verification Agent
+    (`app/agents/recovery_verification.py`): no real LLM backend and no live
+    device/network state exists in this synthetic, single-shot trial harness
+    to genuinely re-check (module docstring) -- so, honestly, the one thing
+    that *is* ground truth here is reused: whether the action actually
+    executed was the more severe of the two this experiment ever proposes.
+
+    Returns `True` (containment not verified, would reinvestigate) only when
+    all of: an action executed autonomously this trial, the row's real label
+    was actually an attack (nothing to verify on a false positive -- the
+    device was never compromised, so "recovery" is vacuously fine), the
+    device context is high-stakes, *and* the action taken was the MODERATE
+    action (`isolate_non_critical`), not the SEVERE one (`shutdown`) --
+    i.e. the one case among this experiment's two fixed candidate actions
+    where a less-disruptive response was chosen on a high-stakes real
+    attack, the plausible case for containment having been insufficient.
+    Never claims to detect an actual containment failure that isn't
+    reducible to that one ground-truth fact.
+    """
+    if decision.executed_action is None:
+        return False
+    if not detection.ground_truth_is_attack:
+        return False
+    return is_high_stakes(context) and decision.executed_action == _MODERATE_ACTION

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T09:03:06.347649+00:00",
+  "generated_at": "2026-10-13T04:16:12.733963+00:00",
   "data_source": "SYNTHETIC stand-in dataset (not real CICIoMT2024 -- see datasets/LICENSE_NOTES.md)",
   "training_seed": 42,
   "device_context_seed": 2026,
@@ -44,6 +44,38 @@
             "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
           }
         },
+        "detection_plus_agentic_ai": {
+          "autonomous_executions": 524,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
+        "detection_plus_risk_engine": {
+          "autonomous_executions": 1035,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 1.0,
+            "numerator": 162,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
         "full_system": {
           "autonomous_executions": 524,
           "awaiting_human_approval": 511,
@@ -58,6 +90,134 @@
             "numerator": 0,
             "denominator": 0,
             "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        }
+      },
+      "ablations": {
+        "without_healthcare_context": {
+          "autonomous_executions": 524,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_clinical_criticality": {
+          "autonomous_executions": 524,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_response_impact_assessment": {
+          "autonomous_executions": 528,
+          "awaiting_human_approval": 507,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.006172839506172839,
+            "numerator": 1,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 4,
+            "out_of": 2038
+          }
+        },
+        "without_agentic_ai": {
+          "autonomous_executions": 1035,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 1.0,
+            "numerator": 162,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 511,
+            "out_of": 2038
+          }
+        },
+        "without_blockchain": {
+          "autonomous_executions": 524,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_recovery_verification": {
+          "autonomous_executions": 524,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          },
+          "would_reopen_if_verified": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 524,
+            "denominator_definition": "full_system's own autonomous executions this run (same decisions WITHOUT_BLOCKCHAIN/WITHOUT_RECOVERY_VERIFICATION both reuse) -- the numerator is how many of those `recovery_result_would_require_reinvestigation` flags as containment-not-verified (see baseline_systems.py); every one of them is what WITHOUT_RECOVERY_VERIFICATION marks resolved unconditionally instead of reopening"
           }
         }
       },
@@ -182,6 +342,38 @@
             "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
           }
         },
+        "detection_plus_agentic_ai": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
+        "detection_plus_risk_engine": {
+          "autonomous_executions": 1037,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 1.0,
+            "numerator": 162,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        },
         "full_system": {
           "autonomous_executions": 526,
           "awaiting_human_approval": 511,
@@ -196,6 +388,134 @@
             "numerator": 0,
             "denominator": 0,
             "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          }
+        }
+      },
+      "ablations": {
+        "without_healthcare_context": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_clinical_criticality": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_response_impact_assessment": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_agentic_ai": {
+          "autonomous_executions": 1037,
+          "awaiting_human_approval": 0,
+          "unsafe_autonomous_action_rate": {
+            "rate": 1.0,
+            "numerator": 162,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 511,
+            "out_of": 2038
+          }
+        },
+        "without_blockchain": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          }
+        },
+        "without_recovery_verification": {
+          "autonomous_executions": 526,
+          "awaiting_human_approval": 511,
+          "unsafe_autonomous_action_rate": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 162,
+            "denominator_definition": "trials where a real attack was present AND the device context was HIGH-criticality + patient-dependent (Section 13 rule 3 / Scenario B's exact high-stakes combination)"
+          },
+          "unnecessary_isolation_rate": {
+            "rate": null,
+            "numerator": 0,
+            "denominator": 0,
+            "denominator_definition": "trials where the detector fired but the row's real label was benign (a genuine false positive, measured on this model's own held-out split)"
+          },
+          "trials_where_decision_differs_from_full_system": {
+            "count": 0,
+            "out_of": 2038
+          },
+          "would_reopen_if_verified": {
+            "rate": 0.0,
+            "numerator": 0,
+            "denominator": 526,
+            "denominator_definition": "full_system's own autonomous executions this run (same decisions WITHOUT_BLOCKCHAIN/WITHOUT_RECOVERY_VERIFICATION both reuse) -- the numerator is how many of those `recovery_result_would_require_reinvestigation` flags as containment-not-verified (see baseline_systems.py); every one of them is what WITHOUT_RECOVERY_VERIFICATION marks resolved unconditionally instead of reopening"
           }
         }
       },

@@ -1,22 +1,27 @@
 import pytest
 
 from app.evaluation.baseline_systems import (
+    AblationName,
     DetectionOutcome,
     DeviceContext,
     SystemName,
     decide_detection_only,
+    decide_detection_plus_agentic_ai,
+    decide_detection_plus_risk_engine,
     decide_fixed_response,
     decide_full_system,
+    decide_full_system_variant,
     detection_outcome_from_row,
     is_high_stakes,
     is_unnecessary_isolation,
     is_unsafe_autonomous_action,
     propose_action,
+    recovery_result_would_require_reinvestigation,
     sample_device_contexts,
 )
 from app.policy_engine.engine import PolicyEngine
 from app.risk_engine.rule_based import RuleBasedRiskModel
-from app.schemas.enums import DeviceCriticality, ResponseActionCategory
+from app.schemas.enums import DeviceCriticality, ImpactLevel, ResponseActionCategory
 
 
 def _attack(confidence: float, label: str = "dos") -> DetectionOutcome:
@@ -198,3 +203,170 @@ class TestUnsafeAndUnnecessaryMetrics:
         context = DeviceContext(device_criticality=DeviceCriticality.LOW, patient_dependency=False)
         decision = decide_fixed_response(detection, context)
         assert is_unnecessary_isolation(decision) is False
+
+
+class TestDecideDetectionPlusAgenticAI:
+    def test_no_action_when_detection_does_not_fire(self):
+        detection = _missed_attack()
+        context = DeviceContext(device_criticality=DeviceCriticality.LOW, patient_dependency=False)
+        decision = decide_detection_plus_agentic_ai(detection, context, "EVAL-agentic-1")
+        assert decision.system == SystemName.DETECTION_PLUS_AGENTIC_AI
+        assert decision.executed_action is None
+        assert decision.requires_human_approval is None
+
+    def test_holds_for_approval_on_patient_dependent_high_severity(self):
+        """High-confidence attack (severity HIGH/CRITICAL) on a
+        patient-dependent device: the heuristic's first disjunct fires."""
+        detection = _attack(0.95)
+        context = DeviceContext(device_criticality=DeviceCriticality.LOW, patient_dependency=True)
+        decision = decide_detection_plus_agentic_ai(detection, context, "EVAL-agentic-2")
+        assert decision.requires_human_approval is True
+        assert decision.executed_action is None
+
+    def test_executes_autonomously_on_low_stakes_low_severity(self):
+        detection = _attack(0.7)
+        context = DeviceContext(device_criticality=DeviceCriticality.LOW, patient_dependency=False)
+        decision = decide_detection_plus_agentic_ai(detection, context, "EVAL-agentic-3")
+        assert decision.requires_human_approval is False
+        assert decision.executed_action == ResponseActionCategory.ISOLATE_NON_CRITICAL
+
+    def test_holds_for_approval_whenever_clinical_impact_itself_is_high(self):
+        """HIGH-criticality, non-patient-dependent device -> clinical_impact_level
+        MEDIUM, so this exercises the second disjunct (impact HIGH/CRITICAL)
+        rather than the patient-dependency one -- patient-dependent devices
+        are always at least HIGH impact (clinical_context_for), so this path
+        is reached whenever patient_dependency=True regardless of severity."""
+        detection = _attack(0.7)  # moderate severity -- would NOT trip the severity disjunct
+        context = DeviceContext(device_criticality=DeviceCriticality.LOW, patient_dependency=True)
+        decision = decide_detection_plus_agentic_ai(detection, context, "EVAL-agentic-4")
+        assert decision.requires_human_approval is True
+
+
+class TestDecideDetectionPlusRiskEngine:
+    @pytest.fixture
+    def engines(self):
+        return RuleBasedRiskModel(), PolicyEngine()
+
+    def test_no_action_when_detection_does_not_fire(self, engines):
+        risk_model, policy_engine = engines
+        detection = _missed_attack()
+        context = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+        decision = decide_detection_plus_risk_engine(
+            detection, context, "EVAL-riskonly-1", risk_model=risk_model, policy_engine=policy_engine
+        )
+        assert decision.executed_action is None
+        assert decision.requires_human_approval is None
+
+    def test_blind_to_real_high_stakes_context_executes_autonomously(self, engines):
+        """The whole point of this system: it feeds the real risk/policy
+        engine a fixed stub context, not the trial's real one -- so, unlike
+        full_system, it autonomously executes a severe action even though
+        the real device context is HIGH-criticality + patient-dependent."""
+        risk_model, policy_engine = engines
+        detection = _attack(0.95)  # -> propose_action recommends shutdown
+        context = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+        decision = decide_detection_plus_risk_engine(
+            detection, context, "EVAL-riskonly-2", risk_model=risk_model, policy_engine=policy_engine
+        )
+        assert decision.requires_human_approval is False
+        assert decision.executed_action == ResponseActionCategory.SHUTDOWN
+        # Metrics are judged against the trial's *real* context, so this is
+        # correctly counted as unsafe even though the engine never saw it.
+        assert is_unsafe_autonomous_action(decision) is True
+
+
+class TestDecideFullSystemVariant:
+    @pytest.fixture
+    def engines(self):
+        return RuleBasedRiskModel(), PolicyEngine()
+
+    def test_without_healthcare_context_never_changes_full_system_routing(self, engines):
+        """Structural claim made in run_baseline_comparison.py's report:
+        flattening clinical_impact_level cannot change a routing decision
+        under the current Policy Engine, because classify_routing never
+        reads clinical_risk -- checked directly here across a sweep of
+        contexts, not just asserted."""
+        risk_model, policy_engine = engines
+        for criticality in DeviceCriticality:
+            for patient_dependency in (True, False):
+                context = DeviceContext(device_criticality=criticality, patient_dependency=patient_dependency)
+                detection = _attack(0.95)
+                full = decide_full_system(
+                    detection, context, "EVAL-variant-hc", risk_model=risk_model, policy_engine=policy_engine
+                )
+                variant = decide_full_system_variant(
+                    detection,
+                    context,
+                    "EVAL-variant-hc",
+                    risk_model=risk_model,
+                    policy_engine=policy_engine,
+                    ablation=AblationName.WITHOUT_HEALTHCARE_CONTEXT,
+                    flat_clinical_impact=ImpactLevel.MEDIUM,
+                )
+                assert variant.executed_action == full.executed_action
+                assert variant.requires_human_approval == full.requires_human_approval
+
+    def test_without_response_impact_assessment_can_permit_what_full_system_blocks(self, engines):
+        """Forcing response_impact to LOW removes the only rule that would
+        otherwise have blocked this case: a MEDIUM-criticality,
+        patient-dependent device given the MODERATE action
+        (isolate_non_critical, deliberately not shutdown/isolate_critical --
+        those are caught unconditionally by rule 3 regardless of
+        response_impact, so they would not demonstrate this ablation's
+        effect) -- full_system requires approval here only via the
+        response_impact=medium + patient_dependency "gap fill" rule; with
+        that term forced to LOW, nothing blocks autonomous execution."""
+        risk_model, policy_engine = engines
+        detection = _attack(0.7)  # moderate confidence -> isolate_non_critical
+        context = DeviceContext(device_criticality=DeviceCriticality.MEDIUM, patient_dependency=True)
+
+        full = decide_full_system(
+            detection, context, "EVAL-variant-ria", risk_model=risk_model, policy_engine=policy_engine
+        )
+        assert full.proposed_action == ResponseActionCategory.ISOLATE_NON_CRITICAL
+        assert full.requires_human_approval is True
+
+        variant = decide_full_system_variant(
+            detection,
+            context,
+            "EVAL-variant-ria",
+            risk_model=risk_model,
+            policy_engine=policy_engine,
+            ablation=AblationName.WITHOUT_RESPONSE_IMPACT_ASSESSMENT,
+            disable_response_impact_assessment=True,
+        )
+        assert variant.requires_human_approval is False
+        assert variant.executed_action == ResponseActionCategory.ISOLATE_NON_CRITICAL
+
+
+class TestRecoveryResultWouldRequireReinvestigation:
+    @pytest.fixture
+    def engines(self):
+        return RuleBasedRiskModel(), PolicyEngine()
+
+    def test_false_when_nothing_executed(self):
+        detection = _missed_attack()
+        context = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+        decision = decide_detection_only(detection, context)
+        assert recovery_result_would_require_reinvestigation(detection, context, decision) is False
+
+    def test_false_on_a_false_positive_even_if_executed(self):
+        detection = _false_positive(0.95)
+        context = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+        decision = decide_fixed_response(detection, context)
+        assert decision.executed_action is not None
+        assert recovery_result_would_require_reinvestigation(detection, context, decision) is False
+
+    def test_true_for_moderate_action_on_high_stakes_real_attack(self):
+        detection = _attack(0.7)  # moderate confidence -> isolate_non_critical
+        context = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+        decision = decide_fixed_response(detection, context)  # naive baseline executes unconditionally
+        assert decision.executed_action == ResponseActionCategory.ISOLATE_NON_CRITICAL
+        assert recovery_result_would_require_reinvestigation(detection, context, decision) is True
+
+    def test_false_for_severe_action_on_high_stakes_real_attack(self):
+        detection = _attack(0.95)  # high confidence -> shutdown
+        context = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+        decision = decide_fixed_response(detection, context)
+        assert decision.executed_action == ResponseActionCategory.SHUTDOWN
+        assert recovery_result_would_require_reinvestigation(detection, context, decision) is False

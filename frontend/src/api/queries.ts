@@ -26,10 +26,14 @@ export const queryKeys = {
   incidents: ['incidents'] as const,
   incident: (incidentId: string) => ['incidents', incidentId] as const,
   agentTraces: (incidentId: string) => ['agents', incidentId] as const,
+  allAgentTraces: ['agents', 'all'] as const,
   proposedResponse: (incidentId: string) => ['responses', 'proposed', incidentId] as const,
   executedResponses: (incidentId: string) => ['responses', 'executed', incidentId] as const,
+  allExecutedResponses: ['responses', 'executed', 'all'] as const,
   recoveryResults: (incidentId: string) => ['recovery', incidentId] as const,
+  allRecoveryResults: ['recovery', 'all'] as const,
   auditTrail: (incidentId: string) => ['blockchain', 'audit', incidentId] as const,
+  allAuditEntries: ['blockchain', 'audit', 'all'] as const,
 }
 
 export function useDevices() {
@@ -66,6 +70,34 @@ export function useAgentTraces(incidentId: string) {
     queryKey: queryKeys.agentTraces(incidentId),
     queryFn: () => client.listAgentTracesForIncident(incidentId),
   })
+}
+
+/** Every agent trace recorded so far, across every incident -- the
+ * cross-incident views (Executive Overview, Threat Monitor) derive
+ * per-incident severity from this the same way `IncidentDetail` derives
+ * one incident's own agent activity from its single-incident equivalent. */
+export function useAllAgentTraces() {
+  return useQuery({ queryKey: queryKeys.allAgentTraces, queryFn: () => client.listAgentTraces() })
+}
+
+/** Every outbox entry recorded so far, across every incident -- Historical
+ * Analytics reads each incident's real `attack_type` off its own
+ * `IncidentProvenance` entry here, since `Incident` itself has no
+ * attack_type field. */
+export function useAllAuditEntries() {
+  return useQuery({ queryKey: queryKeys.allAuditEntries, queryFn: () => client.listAuditEntries() })
+}
+
+/** Every executed response recorded so far, across every incident --
+ * Historical Analytics' real response-action distribution. */
+export function useAllExecutedResponses() {
+  return useQuery({ queryKey: queryKeys.allExecutedResponses, queryFn: client.listExecutedResponses })
+}
+
+/** Every submitted recovery result recorded so far, across every incident
+ * -- Historical Analytics' real recovery success rate. */
+export function useAllRecoveryResults() {
+  return useQuery({ queryKey: queryKeys.allRecoveryResults, queryFn: client.listRecoveryResults })
 }
 
 /** 404 ("no proposed response pending for this incident") is a real,
@@ -117,6 +149,8 @@ export function useRunScenarioMutation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.incidents })
       queryClient.invalidateQueries({ queryKey: ['telemetry'] })
       queryClient.invalidateQueries({ queryKey: ['events'] })
+      queryClient.invalidateQueries({ queryKey: ['blockchain', 'audit'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.devices })
     },
   })
 }
@@ -125,7 +159,10 @@ export function useCreateIncidentMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: IncidentCreateRequest) => client.createIncident(body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.incidents }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.incidents })
+      queryClient.invalidateQueries({ queryKey: ['blockchain', 'audit'] })
+    },
   })
 }
 
@@ -139,8 +176,10 @@ export function useProposeResponseMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: ProposeResponseRequest) => client.proposeResponse(body),
-    onSuccess: (decision) =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.proposedResponse(decision.incident_id) }),
+    onSuccess: (decision) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.proposedResponse(decision.incident_id) })
+      queryClient.invalidateQueries({ queryKey: ['blockchain', 'audit'] })
+    },
   })
 }
 
@@ -152,6 +191,9 @@ export function useExecuteResponseMutation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.proposedResponse(executed.incident_id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.executedResponses(executed.incident_id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.auditTrail(executed.incident_id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.allExecutedResponses })
+      queryClient.invalidateQueries({ queryKey: ['blockchain', 'audit'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.incidents })
     },
   })
 }
@@ -164,6 +206,7 @@ export function useProcessRecoveryResultMutation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.incident(incident.incident_id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.recoveryResults(incident.incident_id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.auditTrail(incident.incident_id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.allRecoveryResults })
     },
   })
 }

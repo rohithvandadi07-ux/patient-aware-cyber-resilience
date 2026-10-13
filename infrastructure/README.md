@@ -17,3 +17,14 @@ warns against premature over-engineering. Fabric's network is deliberately
 "Docker" section and `blockchain/network/README.md` for why (this project's
 development sandbox blocks every container registry it tried, the same
 constraint that already pushed Fabric to native binaries in Phase 8).
+
+**No Infrastructure-as-Code (Terraform, Ansible, Kubernetes manifests, or
+similar) exists here, and none is planned.** Stated plainly rather than
+left implied by an empty directory: this is a single-researcher, local-dev
+prototype with one deployment target (a developer's own machine, via
+`docker compose up` or native processes — see `docs/deployment.md`), not a
+multi-environment or cloud deployment with infrastructure worth codifying.
+Introducing IaC now would be provisioning for environments and scale this
+project has never needed or been asked to support. If a real multi-
+environment deployment is ever required, that is the point to add real
+Terraform/Ansible/k8s configuration here — not before.

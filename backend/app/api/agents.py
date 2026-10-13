@@ -7,18 +7,18 @@ produced for this incident, not a narrated summary ... an agent that hasn't
 run for this incident shows as not-run, not blank." This router is that read
 path over HTTP, over `AgentTraceRecorder` (Phase 4, `app/repositories/agent_traces.py`).
 
-Deliberately no endpoint to *run* an agent here. `app/agents/README.md`'s own
-"known gaps" section: "No orchestration layer sequences the five agents
-automatically yet" and no real `LLMClient` backend is wired in anywhere
-(`app/agents/llm_client.py`'s module docstring -- "that stays an open Phase
-4+ decision ... building it now would be choosing a backend under feature
-pressure rather than after the schemas are proven"). An HTTP endpoint that
-"ran" an agent today could only do so against `MockLLMClient`'s pre-scripted
-responses, which would make the endpoint non-functional for any real caller
--- building that now would be fabricating working functionality this project
-does not actually have, not backend integration. The five agents stay
-callable as plain Python functions (`investigate`, `assess_threat`, etc.)
-for whichever later phase wires a real LLM backend and an orchestrator.
+**Post-Phase-15 update:** a real orchestration layer and a real LLM backend
+now both exist (`app/orchestration/orchestrator.py`'s `IncidentOrchestrator`,
+`app/agents/llm_client.py`'s `GeminiLLMClient`) -- but the endpoint that
+actually *runs* the five agents lives on `/incidents/{id}/investigate`
+(`app/api/incidents.py`), not here, because running an agent only makes
+sense in the context of one incident's lifecycle, which that router already
+owns. This router stays exactly what its own docstring above says: a
+read-only view onto whatever traces running that pipeline produced. The
+traces it serves are real either way -- scripted via `MockLLMClient` when
+`Settings.llm_backend` is at its default ("mock"), or genuinely
+model-produced when `llm_backend="gemini"` with a real key is configured;
+this endpoint cannot tell the difference and does not claim to.
 """
 
 from fastapi import APIRouter, Depends

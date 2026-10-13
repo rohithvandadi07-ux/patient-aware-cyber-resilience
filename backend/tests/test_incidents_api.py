@@ -106,3 +106,59 @@ def test_create_duplicate_incident_id_returns_409():
 
     second = client.post("/incidents", json=payload)
     assert second.status_code == 409
+
+
+def test_investigate_unknown_incident_returns_404():
+    response = client.post("/incidents/does-not-exist/investigate")
+    assert response.status_code == 404
+
+
+def test_investigate_with_default_mock_backend_returns_503_not_fabricated():
+    """Post-Phase-15: `app.state.llm_client` is `MockLLMClient(responses=[])`
+    by default (no `GEMINI_API_KEY` configured in this test process) --
+    calling /investigate must surface that honestly as a real failure
+    (503), never fabricate a successful-looking cycle result."""
+    create = client.post(
+        "/incidents",
+        json={
+            "incident_id": "INC-TEST-INVESTIGATE-1",
+            "device_id": "ventilator-01",
+            "attack_type": "spoofing",
+            "evidence_ref": "evidence-ref-investigate-1",
+            "timestamp": "2026-10-12T00:00:00+00:00",
+        },
+    )
+    assert create.status_code == 201
+
+    response = client.post("/incidents/INC-TEST-INVESTIGATE-1/investigate")
+    assert response.status_code == 503
+    assert "LLM backend call failed" in response.json()["detail"]
+
+
+def test_evidence_for_unknown_incident_returns_404():
+    response = client.get("/incidents/does-not-exist/evidence")
+    assert response.status_code == 404
+
+
+def test_evidence_for_known_incident_is_a_real_empty_join_before_anything_runs():
+    create = client.post(
+        "/incidents",
+        json={
+            "incident_id": "INC-TEST-EVIDENCE-1",
+            "device_id": "ventilator-01",
+            "attack_type": "spoofing",
+            "evidence_ref": "evidence-ref-evidence-1",
+            "timestamp": "2026-10-12T00:00:00+00:00",
+        },
+    )
+    assert create.status_code == 201
+
+    response = client.get("/incidents/INC-TEST-EVIDENCE-1/evidence")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["incident_id"] == "INC-TEST-EVIDENCE-1"
+    assert body["device_id"] == "ventilator-01"
+    # Nothing has run against this fresh incident yet -- a real empty join,
+    # never fabricated placeholder evidence.
+    assert body["agent_traces"] == []
+    assert body["recovery_results"] == []

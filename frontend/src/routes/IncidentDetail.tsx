@@ -51,7 +51,7 @@ export function IncidentDetail() {
 
   return (
     <div className="space-y-4">
-      <Link to="/" className="text-sm text-cyber-700 hover:underline dark:text-cyber-300">
+      <Link to="/incidents" className="text-sm text-cyber-700 hover:underline dark:text-cyber-300">
         ← All incidents
       </Link>
 

@@ -60,3 +60,71 @@ def test_mock_llm_client_raises_when_responses_exhausted():
     client = MockLLMClient(responses=[])
     with pytest.raises(RuntimeError, match="no scripted responses"):
         client.generate("prompt")
+
+
+# --- GeminiLLMClient (post-Phase-15) ---
+# No real network call anywhere below -- `google.genai.Client` is patched
+# out so these tests run offline and deterministically, same as every
+# other test in this file. What they prove: GeminiLLMClient.generate's own
+# wiring (model/contents/config passed through correctly, response.text
+# returned as-is, real failures wrapped as RuntimeError rather than
+# swallowed) -- not that live Gemini reasoning occurred. That can only be
+# proven with a real GEMINI_API_KEY, which this test suite deliberately
+# does not require to pass.
+
+from unittest.mock import MagicMock, patch  # noqa: E402
+
+from app.agents.llm_client import GeminiLLMClient  # noqa: E402
+
+
+def test_gemini_llm_client_returns_response_text():
+    fake_response = MagicMock(text='{"value": 1, "label": "ok"}')
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+
+    with patch("google.genai.Client", return_value=fake_client) as mock_ctor:
+        gemini = GeminiLLMClient(api_key="test-key-not-real", model="gemini-2.0-flash")
+        result = gemini.generate("some prompt")
+
+    mock_ctor.assert_called_once_with(api_key="test-key-not-real")
+    assert result == '{"value": 1, "label": "ok"}'
+    assert gemini.calls == ["some prompt"]
+    call_kwargs = fake_client.models.generate_content.call_args.kwargs
+    assert call_kwargs["model"] == "gemini-2.0-flash"
+    assert call_kwargs["contents"] == "some prompt"
+
+
+def test_gemini_llm_client_wraps_api_failure_as_runtime_error():
+    fake_client = MagicMock()
+    fake_client.models.generate_content.side_effect = Exception("connection reset")
+
+    with patch("google.genai.Client", return_value=fake_client):
+        gemini = GeminiLLMClient(api_key="test-key-not-real")
+        with pytest.raises(RuntimeError, match="Gemini API call failed"):
+            gemini.generate("some prompt")
+
+
+def test_gemini_llm_client_raises_on_empty_response_text():
+    fake_response = MagicMock(text=None)
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+
+    with patch("google.genai.Client", return_value=fake_client):
+        gemini = GeminiLLMClient(api_key="test-key-not-real")
+        with pytest.raises(RuntimeError, match="no text content"):
+            gemini.generate("some prompt")
+
+
+def test_gemini_llm_client_plugs_into_generate_validated_like_any_other_client():
+    """End to end through the same retry/validation path every agent
+    uses -- proves GeminiLLMClient is a drop-in LLMClient, not a special
+    case `generate_validated` needs to know about."""
+    fake_response = MagicMock(text=_DummyOutput(value=7, label="from-gemini").model_dump_json())
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+
+    with patch("google.genai.Client", return_value=fake_client):
+        gemini = GeminiLLMClient(api_key="test-key-not-real")
+        result = generate_validated(gemini, "prompt", _DummyOutput, agent_name="test_agent")
+
+    assert result == _DummyOutput(value=7, label="from-gemini")

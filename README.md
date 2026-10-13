@@ -180,18 +180,88 @@ bullet below are the honest account of what that excludes.
   docstring for the accepted, disclosed tradeoff). See
   `app/models/README.md` and `app/repositories/README.md` for the full
   detail.
+- **Post-Phase-15, round two, user-directed: real orchestration, a real
+  LLM backend, authentication, the fuller ablation set, 4 more SOC
+  dashboard views, and 5 standalone docs.** Closes most of what the
+  previous bullet's "still not built" list named:
+  - **A real multi-agent orchestrator** (`app/orchestration/
+    orchestrator.py`'s `IncidentOrchestrator`) now sequences the five
+    agents and the L5-L8 deterministic services automatically, over a new
+    `POST /incidents/{id}/investigate` endpoint — the same sequence
+    `tests/test_lifecycle_integration.py` already proved by hand, now run
+    for real, including a genuine re-investigation loop when recovery
+    verification reports `reinvestigation_required=True` (previously a
+    dead-end `REOPENED` status flag nothing re-triggered — a real,
+    previously-disclosed gap, now closed and covered by 4 new tests in
+    `app/orchestration/tests/test_orchestrator.py`, including the bounded
+    re-investigation budget).
+  - **A real LLM backend**: `GeminiLLMClient` (`app/agents/llm_client.py`,
+    Google's Gemini API via the `google-genai` SDK), selected via
+    `Settings.llm_backend="gemini"` with a `GEMINI_API_KEY` configured.
+    Defaults to `"mock"` (`MockLLMClient`, unchanged), so every
+    pre-existing test is unaffected; falls back to mock with a logged
+    warning if `"gemini"` is requested with no key, rather than
+    constructing a client that would fail on first use. 10 new offline
+    tests (`google.genai.Client` mocked out, no real network call) prove
+    the wiring; an actual live Gemini call has not been made in this
+    sandbox (no key was available here) — that is still open until a real
+    `GEMINI_API_KEY` is configured and exercised.
+  - **Authentication/authorization** (`app/core/auth.py`): real,
+    API-key-based, three ranked roles (`viewer` < `operator` < `approver`),
+    wired onto every route except `/health`. Defaults to
+    `Settings.auth_enabled=False` (this app's historical no-auth
+    behavior, now represented explicitly rather than having no concept of
+    a principal at all); enabling it with no keys configured fails closed.
+    Approving/executing a response and auto-approving an investigation
+    cycle require the `approver` role once enabled. 10 new tests.
+  - **The ablation/baseline set grew from 3 to 11 real, measured arms**:
+    `SystemName` now has all 5 the master plan names (added
+    `detection_plus_agentic_ai`, `detection_plus_risk_engine`); all 6
+    "without-X" ablations are real and runnable, with two (`without_
+    blockchain`, `without_recovery_verification`) honestly confirmed —
+    programmatically, not asserted — to have zero effect on this harness's
+    decision path, since neither component sits on it. See
+    `evaluation/README.md` for the full, still-current disclosure of what
+    remains unmeasured (the real five-system/seven-ablation study still
+    needs the real benchmark dataset below, not just more code).
+  - **4 more SOC dashboard views** (`frontend/src/routes/{Overview,Fleet,
+    ThreatMonitor,Analytics}.tsx`): executive overview, IoMT fleet, a real
+    threat-monitor timeline, and historical analytics — these were the
+    only 4 of the master plan's 11 named views with no component at all;
+    10 of 11 are now fully real. The 11th, response alternatives, stays
+    partial exactly as before: `PolicyDecision` only carries one chosen
+    action, not ranked candidates, so the frontend shows the real chosen
+    action + rationale rather than fabricating alternatives the backend
+    doesn't have — fixing that needs a backend schema change, not more
+    frontend code.
+  - **5 new standalone docs**: `docs/{threat-model,api,deployment,
+    limitations-and-ethics,reproducibility}.md`.
+  - **A real dataset/paper search, not a code change**: the five
+    originally-named benchmark datasets' hosts (and every other external
+    host tried) are blocked by this sandbox's own network policy, not
+    just unb.ca specifically — confirmed by testing several unrelated
+    hosts, not just the original one. A real, open (CC-BY-4.0), ML-ready
+    alternative was found — a unified CICIoMT2024 + IoMT-TrafficData
+    release on CORA.RDR/Dataverse (DOI 10.34810/DATA3305) whose six-class
+    attack taxonomy (Benign/DDoS/DoS/MQTT/Reconnaissance/Spoofing) already
+    lines up with this project's own `AttackCategory` enum — along with a
+    verified 2025 IEEE Access base paper (Zachos et al., DOI
+    10.1109/ACCESS.2025.3547572). Neither has been downloaded into this
+    repository; the detector still trains and evaluates on the synthetic
+    stand-in exactly as before. Switching to the real dataset needs
+    someone with working network access to download it and attach the
+    files — tracked as an open item, not silently dropped.
 - **Still not built, by deliberate and disclosed decision, not oversight:**
-  the fuller five-system/seven-ablation comparison beyond Phase 13's gate;
-  an actual registry-access build/run verification of Phase 14's Docker
-  setup; the TimescaleDB-hypertable half of the Postgres migration above
-  (`NetworkEventStore`/`TelemetryStore`); authentication/authorization;
-  rate limiting; and any automatic multi-agent orchestration framework —
-  the five agents are still sequenced manually wherever they're exercised
-  (tests, the lifecycle integration test above, the Phase 11 E2E seeding,
-  Phase 13's evaluation harness), the same open Section 11 decision named
-  since Phase 4. `docs/phase15-verification.md` is the single place most
-  of these are listed together with why each remains open (the Postgres
-  item there is now addressed, as described above).
+  the TimescaleDB-hypertable half of the Postgres migration
+  (`NetworkEventStore`/`TelemetryStore`); rate limiting; an actual
+  registry-access build/run verification of Phase 14's Docker setup;
+  training/evaluating the detector on a real benchmark dataset instead of
+  the synthetic stand-in (blocked on the download above, not on code); a
+  live Gemini call actually exercised end-to-end (the wiring is real and
+  tested offline; no `GEMINI_API_KEY` has been available in this sandbox
+  to prove a live call); and the response-alternatives dashboard view,
+  which needs a `PolicyDecision` schema change before it can show ranked
+  candidates rather than just the one chosen action.
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.

@@ -34,6 +34,7 @@ from app.api.dependencies import (
 )
 from app.blockchain.hashing import hash_payload
 from app.blockchain.outbox import OutboxRepository, enqueue_approval, enqueue_decision, enqueue_response
+from app.core.auth import Principal, get_current_principal, require_role
 from app.iomt_simulator.registry import DeviceNotFoundError
 from app.policy_engine.engine import PolicyEngine
 from app.repositories.incidents import IncidentNotFoundError
@@ -119,7 +120,18 @@ async def execute_response(
     proposed_repo: ProposedResponseRepository = Depends(get_proposed_response_repository),
     executed_repo: ExecutedResponseRepository = Depends(get_executed_response_repository),
     outbox_repo: OutboxRepository = Depends(get_outbox_repository),
+    principal: Principal = Depends(get_current_principal),
 ) -> ExecutedResponse:
+    # Post-Phase-15: executing a response with a human approval attached is
+    # the one HTTP action that can both mutate a simulated device's state
+    # *and* carry someone's identity as having approved it -- require the
+    # 'approver' role for that specific case. Auto-approved (requires_human_
+    # approval=False) execution needs no approval body at all, so it stays
+    # at the base 'operator' role the router-level dependency already
+    # resolved (Settings.auth_enabled controls whether that check is live).
+    if body.approval is not None:
+        require_role(principal, "approver")
+
     try:
         decision = proposed_repo.get(body.incident_id)
     except ProposedResponseNotFoundError as exc:

@@ -26,14 +26,25 @@ Known gaps carried forward on purpose, not fabricated around:
 - `plan_response` accepts `risk_score: RiskScore | None` — Phase 5's Risk
   Engine can now supply a real one, but the agent still handles `None`
   explicitly (no risk score available yet) rather than faking zero risk.
-- No orchestration layer sequences the five agents automatically yet (Section
-  11: "the orchestration mechanism [...] is a Phase 4 decision, made after the
-  schemas above are implemented and testable" — the schemas are now proven
-  end-to-end, including through the real HTTP API, by Phase 10's
-  `backend/tests/test_lifecycle_integration.py`, which manually sequences the
-  five agents exactly the way a real orchestrator eventually will. A real
-  orchestrator is still open work for whichever phase decides to build one.
-- No real LLM backend exists anywhere in this project (Phase 10's lifecycle
-  integration test above, like every agent unit test, uses `MockLLMClient`
-  with scripted responses — disclosed plainly in that test's own docstring,
-  never presented as live model output).
+
+**Post-Phase-15 update (closes the two gaps this section used to name):**
+
+- **A real orchestration layer now exists**: `app/orchestration/
+  orchestrator.py`'s `IncidentOrchestrator` sequences the five agents and
+  the L5-L8 deterministic services automatically, over a real API endpoint
+  (`POST /incidents/{id}/investigate`) -- the same sequence
+  `tests/test_lifecycle_integration.py` already proved by hand, now run for
+  real, including a real re-investigation loop when recovery verification
+  reports `reinvestigation_required=True` (previously a dead-end status
+  flag -- see `app/recovery/engine.py`'s module docstring and `claude/
+  architecture-decisions.md`'s Post-Phase-15 gap audit).
+- **A real LLM backend now exists**: `GeminiLLMClient`
+  (`app/agents/llm_client.py`), wired to Google's Gemini API via the
+  `google-genai` SDK. `MockLLMClient` is still the *default*
+  (`Settings.llm_backend="mock"`) and still what every pre-existing agent
+  unit test and `test_lifecycle_integration.py` use -- disclosed plainly in
+  those tests' own docstrings, never presented as live model output.
+  `llm_backend="gemini"` with a real `GEMINI_API_KEY` configured is what
+  actually makes a live call; without a key, `_register_state` falls back
+  to mock with a logged warning rather than constructing a client that
+  would fail on its first use.

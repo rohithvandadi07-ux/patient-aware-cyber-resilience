@@ -6,6 +6,7 @@ later phases can register new routers in one place as they're built, instead of
 editing a growing `main.py`.
 """
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -15,6 +16,7 @@ from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
+_logger = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -105,6 +107,13 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
     )
     from app.repositories.telemetry_events import NetworkEventStore, TelemetryStore
 
+    # Post-Phase-15: so app/core/auth.py's get_current_principal dependency
+    # can read auth_enabled/api_keys without its own separate DI wiring --
+    # every other `Settings`-derived decision in this function already
+    # closes over `settings` directly; auth needs it reachable from a
+    # FastAPI dependency function instead, hence app.state.
+    app.state.settings = settings
+
     app.state.device_registry = build_default_fleet()
     app.state.network_event_store = NetworkEventStore()
     app.state.telemetry_store = TelemetryStore()
@@ -159,6 +168,46 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
     # deployment runs ... tests call `process_once()` directly" note.
     app.state.outbox_worker = OutboxWorker(app.state.outbox_repository, app.state.fabric_client)
 
+    # --- Agent orchestration (post-Phase-15) ---
+    # `log_handler`: the real, bounded in-memory log capture the five agents'
+    # `get_logs` tool reads from (`app/repositories/log_capture.py`) -- one
+    # per app instance, installed once here rather than per-request, so log
+    # lines emitted by any route/service during this process's lifetime are
+    # genuinely queryable, not a fresh empty buffer every request.
+    from app.repositories.log_capture import install as install_log_capture
+
+    app.state.log_handler = install_log_capture()
+
+    # `llm_client`: which real `LLMClient` the orchestrator constructs for
+    # the five agents to call through (`app/agents/llm_client.py`). Mirrors
+    # `fabric_client_mode`/`repository_backend`'s mock-default pattern.
+    # Falls back to `MockLLMClient` (with a logged warning, not a silent
+    # swap) if `llm_backend="gemini"` is requested but no API key is
+    # configured -- constructing a `GeminiLLMClient` that would fail on its
+    # very first call is worse than running mock and saying so.
+    from app.agents.llm_client import GeminiLLMClient, MockLLMClient
+
+    if settings.llm_backend == "gemini" and settings.gemini_api_key:
+        app.state.llm_client = GeminiLLMClient(
+            api_key=settings.gemini_api_key, model=settings.gemini_model
+        )
+    else:
+        if settings.llm_backend == "gemini":
+            _logger.warning(
+                "llm_backend='gemini' was requested but GEMINI_API_KEY is empty -- falling back "
+                "to MockLLMClient. Set GEMINI_API_KEY (get one at "
+                "https://aistudio.google.com/app/apikey) to actually use Gemini."
+            )
+        app.state.llm_client = MockLLMClient(responses=[])
+
+    # `risk_model`: the real deterministic dual-risk engine (Phase 5) the
+    # orchestrator scores every candidate response against -- the same
+    # `RuleBasedRiskModel` instance `/risk-assessments` constructs, just
+    # shared here so the orchestrator doesn't need its own.
+    from app.risk_engine.rule_based import RuleBasedRiskModel
+
+    app.state.risk_model = RuleBasedRiskModel()
+
 
 def _register_routers(app: FastAPI) -> None:
     """Register all API routers.
@@ -167,6 +216,8 @@ def _register_routers(app: FastAPI) -> None:
     agents, risk engine, etc.) adds its router here as it's built — this
     function is the single place that has to change to wire in a new resource.
     """
+    from fastapi import Depends
+
     from app.api.agents import router as agents_router
     from app.api.blockchain_audit import router as blockchain_audit_router
     from app.api.detections import router as detections_router
@@ -178,15 +229,22 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.responses import router as responses_router
     from app.api.risk_assessments import router as risk_assessments_router
     from app.api.telemetry import router as telemetry_router
+    from app.core.auth import get_current_principal
+
+    # Post-Phase-15: every router except /health requires a resolved
+    # Principal (app/core/auth.py) -- a no-op when Settings.auth_enabled
+    # is false (the default), a real X-API-Key check when true. /health is
+    # deliberately exempt: a liveness probe should not need credentials.
+    _auth = [Depends(get_current_principal)]
 
     app.include_router(health_router)
-    app.include_router(devices_router)
-    app.include_router(detections_router)
-    app.include_router(telemetry_router)
-    app.include_router(events_router)
-    app.include_router(incidents_router)
-    app.include_router(risk_assessments_router)
-    app.include_router(agents_router)
-    app.include_router(responses_router)
-    app.include_router(recovery_router)
-    app.include_router(blockchain_audit_router)
+    app.include_router(devices_router, dependencies=_auth)
+    app.include_router(detections_router, dependencies=_auth)
+    app.include_router(telemetry_router, dependencies=_auth)
+    app.include_router(events_router, dependencies=_auth)
+    app.include_router(incidents_router, dependencies=_auth)
+    app.include_router(risk_assessments_router, dependencies=_auth)
+    app.include_router(agents_router, dependencies=_auth)
+    app.include_router(responses_router, dependencies=_auth)
+    app.include_router(recovery_router, dependencies=_auth)
+    app.include_router(blockchain_audit_router, dependencies=_auth)

@@ -10,10 +10,15 @@ decided yet: [...] which concrete LLM backend to call first [...] made after
 the schemas above are implemented and testable against mocked LLM responses."
 
 This module therefore defines the interface and the retry policy, plus a
-`MockLLMClient` for tests -- no real LLM backend (Anthropic/OpenAI/etc. SDK
-call) is wired in yet. That stays an open Phase 4+ decision per the
-architecture doc's own words; building it now would be choosing a backend
-under feature pressure rather than after the schemas are proven.
+`MockLLMClient` for tests -- every agent's schema/retry logic was proven
+against it first, deliberately, before any real backend was wired in.
+
+**Post-Phase-15 update:** that real backend now exists -- `GeminiLLMClient`
+below, wired to Google's Gemini API via the `google-genai` SDK, selected
+with `Settings.llm_backend="gemini"` (default stays `"mock"`, so nothing
+about the default dev/test experience changes). See `GeminiLLMClient`'s own
+docstring for why Gemini, why now, and exactly what it does and does not
+handle.
 """
 
 import json
@@ -102,3 +107,77 @@ def generate_validated(client: LLMClient, prompt: str, output_schema: type[T], a
 def _parse(raw_response: str, output_schema: type[T]) -> T:
     payload = json.loads(raw_response)
     return output_schema.model_validate(payload)
+
+
+@dataclass
+class GeminiLLMClient:
+    """Real `LLMClient` backed by Google's Gemini API (`google-genai` SDK).
+
+    Post-Phase-15, user-directed: this project went a long time without a
+    real LLM backend -- not from inability, but because this module's own
+    history records the deliberate choice to prove the agent schemas/retry
+    policy against `MockLLMClient` first, "after the schemas above are
+    implemented and testable against mocked LLM responses" (see this
+    module's top docstring). They are now proven (every one of the five
+    agents' unit tests, plus `tests/test_lifecycle_integration.py`'s real
+    end-to-end chain, all pass against `MockLLMClient`), so wiring a real
+    backend is no longer "choosing a backend under feature pressure" -- it
+    is the next planned step.
+
+    Selected via `Settings.llm_backend == "gemini"` (default stays
+    `"mock"` -- see `app/core/app_factory.py::_register_state`); never the
+    default, so every pre-existing test and the default dev experience are
+    unaffected unless a `GEMINI_API_KEY` is actually configured.
+
+    `generate` asks for `response_mime_type="application/json"` so Gemini
+    is constrained to emit a JSON object directly -- `generate_validated`
+    (above) still does the real schema validation and retry-once policy on
+    whatever comes back; this class does not pre-validate or special-case
+    Gemini's output in any way, so a malformed response is handled by the
+    exact same path a malformed `MockLLMClient` response would be.
+
+    Raises `RuntimeError` at call time (not at construction) if the
+    `google-genai` package is not importable, or if the API call itself
+    fails (network error, invalid key, rate limit, etc.) -- these surface to
+    the caller as an ordinary exception, the same as any other
+    `LLMClient.generate` failure; nothing here retries at the transport
+    level or swallows a real failure to produce a fabricated response.
+    """
+
+    api_key: str
+    model: str = "gemini-2.0-flash"
+    calls: list[str] = field(default_factory=list, repr=False)
+
+    def __post_init__(self) -> None:
+        try:
+            from google import genai
+        except ImportError as exc:
+            raise RuntimeError(
+                "GeminiLLMClient requires the 'google-genai' package (see requirements.txt); "
+                "it is not importable in this environment."
+            ) from exc
+        self._client = genai.Client(api_key=self.api_key)
+
+    def generate(self, prompt: str) -> str:
+        from google.genai import types
+
+        self.calls.append(prompt)
+        try:
+            response = self._client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            )
+        except Exception as exc:  # noqa: BLE001 -- deliberately broad: any transport/API
+            # failure (auth, network, rate limit, quota) is a real failure this method
+            # must not hide behind a fabricated response. It propagates as-is; the caller
+            # (an agent's run() via run_agent_call) handles it the same as any other
+            # unexpected exception from `client.generate`.
+            raise RuntimeError(f"Gemini API call failed: {exc}") from exc
+
+        if response.text is None:
+            raise RuntimeError(
+                "Gemini API returned no text content (e.g. blocked by a safety filter) -- "
+                "nothing to validate against the output schema."
+            )
+        return response.text
