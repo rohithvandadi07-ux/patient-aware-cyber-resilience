@@ -236,21 +236,50 @@ bullet below are the honest account of what that excludes.
     frontend code.
   - **5 new standalone docs**: `docs/{threat-model,api,deployment,
     limitations-and-ethics,reproducibility}.md`.
-  - **A real dataset/paper search, not a code change**: the five
+  - **A real dataset/paper search, not a code change** — and a
+    self-correction of this project's first attempt at it. The five
     originally-named benchmark datasets' hosts (and every other external
     host tried) are blocked by this sandbox's own network policy, not
     just unb.ca specifically — confirmed by testing several unrelated
-    hosts, not just the original one. A real, open (CC-BY-4.0), ML-ready
-    alternative was found — a unified CICIoMT2024 + IoMT-TrafficData
-    release on CORA.RDR/Dataverse (DOI 10.34810/DATA3305) whose six-class
-    attack taxonomy (Benign/DDoS/DoS/MQTT/Reconnaissance/Spoofing) already
-    lines up with this project's own `AttackCategory` enum — along with a
-    verified 2025 IEEE Access base paper (Zachos et al., DOI
-    10.1109/ACCESS.2025.3547572). Neither has been downloaded into this
-    repository; the detector still trains and evaluates on the synthetic
-    stand-in exactly as before. Switching to the real dataset needs
-    someone with working network access to download it and attach the
-    files — tracked as an open item, not silently dropped.
+    hosts, not just the original one. The first candidate base paper found
+    (Zachos et al. 2025, IEEE Access, DOI 10.1109/ACCESS.2025.3547572) was
+    checked again at Darshan's request and does **not** use CICIoMT2024 or
+    any publicly released dataset — its title says "dataset generation"
+    because it generates its own private Raspberry-Pi testbed data for
+    unsupervised novelty/outlier detection (OCSVM, LOF, IsoForest, etc.),
+    never released. Pairing it with the unrelated CORA.RDR/Dataverse
+    release below would not have supported a real same-dataset comparison,
+    so it is dropped as the base paper (kept only as a related-work
+    citation on resource-constrained AIDS design).
+  - **Corrected base paper, verified to use the same dataset this project
+    targets:** Akar, Sahmoud, Onat, Çavuşoğlu & Malondo, "L2D2: A Novel
+    LSTM Model for Multi-Class Intrusion Detection Systems in the Era of
+    IoMT," *IEEE Access*, vol. 13, pp. 7002-7013, 2025, DOI
+    10.1109/ACCESS.2025.3526883. It trains and evaluates directly on
+    **CICIoMT2024** (19 classes, 98% reported accuracy) and, like every
+    other paper found in this search (Shaikh et al.'s HCLR-IDS, Balhareth &
+    Ilyas's tree-based IDS, the Zachos paper above), stops at
+    classification — none of them decide what to *do* about a detected
+    attack in a way that weighs patient/clinical impact. That gap is this
+    project's actual novelty claim: a patient-aware decision layer
+    (dual-risk model + policy engine + multi-agent reasoning + verified
+    recovery + immutable audit) sitting downstream of detection, not a
+    better detector. A real, open (CC-BY-4.0), ML-ready alternative to
+    raw CICIoMT2024 was also found — a unified CICIoMT2024 +
+    IoMT-TrafficData release on CORA.RDR/Dataverse (DOI 10.34810/DATA3305)
+    whose six-class taxonomy (Benign/DDoS/DoS/MQTT/Reconnaissance/Spoofing)
+    lines up with this project's own `AttackCategory` enum — useful as a
+    faster-to-use ML-ready table, but its own re-extracted features are
+    not guaranteed identical to CICIoMT2024's original CSVs, so the exact
+    same-dataset comparison to the L2D2 paper's reported 98%/19-class
+    number needs the raw CICIoMT2024 CSVs from CIC/unb.ca specifically
+    (`datasets/download_ciciomt2024.py` already targets this). Neither has
+    been downloaded into this repository; the detector still trains and
+    evaluates on the synthetic stand-in exactly as before. Switching to
+    the real dataset needs someone with working network access to
+    download it and attach the files — tracked as an open item, not
+    silently dropped. See `datasets/LICENSE_NOTES.md` for the full,
+    sourced writeup.
 - **Still not built, by deliberate and disclosed decision, not oversight:**
   the TimescaleDB-hypertable half of the Postgres migration
   (`NetworkEventStore`/`TelemetryStore`); rate limiting; an actual
