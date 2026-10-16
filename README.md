@@ -273,19 +273,27 @@ bullet below are the honest account of what that excludes.
     not guaranteed identical to CICIoMT2024's original CSVs, so the exact
     same-dataset comparison to the L2D2 paper's reported 98%/19-class
     number needs the raw CICIoMT2024 CSVs from CIC/unb.ca specifically
-    (`datasets/download_ciciomt2024.py` already targets this). Neither has
-    been downloaded into this repository; the detector still trains and
-    evaluates on the synthetic stand-in exactly as before. Switching to
-    the real dataset needs someone with working network access to
-    download it and attach the files — tracked as an open item, not
-    silently dropped. See `datasets/LICENSE_NOTES.md` for the full,
-    sourced writeup.
+    (`datasets/download_ciciomt2024.py` already targets this). The raw
+    CICIoMT2024 WiFi+MQTT CSVs were later obtained by hand and are now
+    used for the detection baselines below (separate 45-feature pipeline);
+    the runtime detector and the Phase 13 ablation harness still use the
+    synthetic stand-in until they are re-pointed at it. See
+    `datasets/LICENSE_NOTES.md` for the full, sourced writeup.
+- **Real CICIoMT2024 detection baselines (19-class, official split).**
+  `backend/app/cybersecurity/ciciomt2024.py` loads the real CSVs (labels
+  come from file names; there is no label column) and
+  `train_ciciomt2024.py` trains and evaluates XGBoost and Random Forest on
+  the official capture-level train/test split, scoring the *entire* test
+  split (1,614,182 rows). Results and caveats: `evaluation/ciciomt2024_results.md`.
+  These models use the dataset's 45 flow features, so they are **not** the
+  models the runtime detection service loads (15-feature proxy schema).
 - **Still not built, by deliberate and disclosed decision, not oversight:**
   the TimescaleDB-hypertable half of the Postgres migration
   (`NetworkEventStore`/`TelemetryStore`); rate limiting; an actual
   registry-access build/run verification of Phase 14's Docker setup;
-  training/evaluating the detector on a real benchmark dataset instead of
-  the synthetic stand-in (blocked on the download above, not on code); a
+  re-pointing the runtime detector and the Phase 13 ablation harness at the
+  real CICIoMT2024 data (the offline baselines already run on it, see
+  above; the harness and the simulator's feature schema do not yet); a
   live Gemini call actually exercised end-to-end (the wiring is real and
   tested offline; no `GEMINI_API_KEY` has been available in this sandbox
   to prove a live call); and the response-alternatives dashboard view,

@@ -22,3 +22,12 @@ comparison non-trivial (see `backend/app/evaluation/baseline_systems.py`'s
 docstring), not the complete five-system progression or the seven ablations
 Section 18 describes — those remain for a later pass, built only once each
 system variant they'd compare is itself real.
+
+## Real CICIoMT2024 artifacts
+
+`python -m app.cybersecurity.train_ciciomt2024` writes
+`experiments/models/ciciomt2024_<model>.joblib` (gitignored) and a matching
+`ciciomt2024_<model>.metadata.json` (training data, hyper-parameters, class
+counts, metrics). The Random Forest artifact is ~436 MB and is not kept in
+this repository; regenerate it with the command above (about one minute for
+the RF at the default cap).

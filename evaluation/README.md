@@ -52,3 +52,12 @@ all: blockchain provenance recording and recovery's post-execution
 device/network re-check both happen outside the single-trial decision step
 this harness measures). Built as each becomes measurable against a real,
 implemented component — never stubbed with placeholder numbers.
+
+## Real-data detection baselines
+
+- `ciciomt2024_results.md` / `.json` — XGBoost and Random Forest trained on the
+  real CICIoMT2024 WiFi+MQTT train split and scored on the entire official test
+  split, with 19-class, 6-family and binary (attack vs benign) views. Unlike the
+  synthetic stand-in, this run has real benign false positives, so the
+  `unnecessary_isolation_rate` inputs now exist; the Phase 13 harness has not yet
+  been re-run on this data.

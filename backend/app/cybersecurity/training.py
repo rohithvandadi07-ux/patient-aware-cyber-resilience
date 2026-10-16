@@ -8,12 +8,15 @@ class weighting, documented here, not silently.
 Data source: this script trains against whatever DataFrame it's given. By
 default (no `--data-dir`) it uses the synthetic stand-in dataset in
 `synthetic_data.py`, and every metric it prints or saves says "synthetic" --
-see that module's docstring and datasets/LICENSE_NOTES.md for why. Once
-CICIoMT2024 is actually downloaded, `--data-dir` points this at the real CSVs
-instead (load_real_dataset below is the integration point; it is NOT
-implemented yet because there is no real data to test it against from this
-environment -- implementing and testing it blind would risk a loader that
-silently does the wrong thing against the real file format).
+see that module's docstring and datasets/LICENSE_NOTES.md for why.
+
+The real CICIoMT2024 data is handled by its own, separate pipeline:
+`ciciomt2024.py` (loader) and `train_ciciomt2024.py` (19-class training and
+evaluation on the official train/test split). It is separate because the real
+files have 45 flow features while this module's synthetic schema -- which the
+runtime simulator's proxy features in `feature_extraction.py` are built to
+match -- has 15, so the two models are not interchangeable. `load_real_dataset`
+below therefore stays unimplemented on purpose.
 """
 
 import argparse
@@ -48,20 +51,18 @@ from app.cybersecurity.synthetic_data import (
 def load_real_dataset(data_dir: Path) -> pd.DataFrame:
     """Load and combine CICIoMT2024's real per-attack CSVs from `data_dir`.
 
-    NOT IMPLEMENTED: this project has not had network access to download the
-    real dataset (see datasets/LICENSE_NOTES.md), so there has been nothing to
-    test a real loader against. Implementing this against guessed column names
-    or file structure would risk silently training on mis-parsed data and
-    reporting it as real -- exactly what the architecture spec's Section 32
-    ("do not fabricate completion") forbids. Implement this once the real CSVs
-    exist locally, using their actual headers and filenames as ground truth.
+    NOT IMPLEMENTED HERE, deliberately: the real loader lives in
+    `app.cybersecurity.ciciomt2024` (`load_split`) and is trained/evaluated by
+    `app.cybersecurity.train_ciciomt2024`. The real data has a different
+    (45-column) feature schema from this module's synthetic one (15 columns),
+    so loading it into `train_baselines` below would silently train a model the
+    runtime detection service's feature extractor cannot feed.
     """
     raise NotImplementedError(
-        "Real CICIoMT2024 loading is not implemented yet -- no real dataset has "
-        "been downloaded in this project's development environment to build "
-        "and test a loader against. See datasets/LICENSE_NOTES.md. Run without "
-        "--data-dir to train against the clearly-labeled synthetic stand-in "
-        "instead."
+        "load_real_dataset is not implemented here: use app.cybersecurity.ciciomt2024.load_split "
+        "and `python -m app.cybersecurity.train_ciciomt2024 --data-dir <folder with train/ and "
+        "test/>` for the real CICIoMT2024 data (45-feature schema, separate pipeline). Run this "
+        "script without --data-dir to train against the clearly-labeled synthetic stand-in."
     )
 
 
