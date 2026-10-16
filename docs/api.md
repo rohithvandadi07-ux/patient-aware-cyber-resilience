@@ -60,6 +60,8 @@ carries.
 Read-only; backed by the in-memory `TelemetryStore`. Returns `[]`, never a
 fabricated reading, when nothing has been recorded for the filter. The only
 thing that currently writes into this store is `/detections/run-scenario`.
+With `REPOSITORY_BACKEND=postgres` it is backed by the `telemetry_readings`
+table (a TimescaleDB hypertable when the extension exists).
 
 ## `/events`
 
@@ -75,6 +77,7 @@ written to only by `/detections/run-scenario`.
 | Method | Path | Purpose | Response |
 | --- | --- | --- | --- |
 | POST | `/detections/run-scenario` | Runs one fixed, reproducible attack scenario (seed `42`, a spoofed `set_tidal_volume` command against `ventilator-01` at tick 6) against a fresh device registry, scores the resulting event stream with the loaded model, and returns whatever it detects | `list[DetectionEvent]`, 503 if no trained model artifact exists yet |
+| POST | `/detections/score-flows` | Scores 1–1000 real CICIoMT2024-style flow records (all 45 dataset features by column name, for one `device_id`) with the real 19-class XGBoost model (`Settings.real_detector_model_path`); returns every flow's verdict (fine class, family, confidence, optional `DetectionEvent`) and opens one incident per distinct attack type detected | `FlowBatchResponse`; 422 for a missing/non-finite feature, 503 with training instructions if the (gitignored) model artifact does not exist |
 
 This is not a free-form "run any scenario" endpoint — the scenario is
 hard-coded (`backend/app/api/detections.py`'s own docstring explains why: no

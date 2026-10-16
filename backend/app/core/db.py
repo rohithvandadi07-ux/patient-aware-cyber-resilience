@@ -33,12 +33,15 @@ those stops being true -- not invented here just to look more complete.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+_logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -102,3 +105,48 @@ def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+# Tables that are genuinely time-series and so are converted to TimescaleDB
+# hypertables when the extension is available: (table, time column).
+HYPERTABLES = [("network_events", "timestamp"), ("telemetry_readings", "timestamp")]
+
+
+def create_hypertables(engine: Engine) -> dict[str, str]:
+    """Best-effort conversion of the time-series tables to TimescaleDB
+    hypertables. Returns {table: "hypertable" | "plain: <reason>"}.
+
+    This never raises for a missing extension: on plain Postgres the tables
+    simply stay ordinary tables (still correct, still indexed by device and
+    time, just without chunking/compression/retention). It needs a database
+    where the `timescaledb` extension can be created (the project's own
+    docker-compose `db` service uses the TimescaleDB image). Idempotent:
+    `if_not_exists` is passed, so repeated startups are fine.
+    """
+    from sqlalchemy import text
+
+    result: dict[str, str] = {}
+    with engine.connect() as conn:
+        available = conn.execute(
+            text("SELECT 1 FROM pg_available_extensions WHERE name = 'timescaledb'")
+        ).first()
+        if available is None:
+            reason = "plain: timescaledb extension is not installed in this Postgres"
+            return {table: reason for table, _ in HYPERTABLES}
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
+            conn.commit()
+            for table, column in HYPERTABLES:
+                conn.execute(
+                    text(
+                        "SELECT create_hypertable(:t, :c, if_not_exists => TRUE, migrate_data => TRUE)"
+                    ),
+                    {"t": table, "c": column},
+                )
+                result[table] = "hypertable"
+            conn.commit()
+        except Exception as exc:  # noqa: BLE001 -- any DB error here must not stop startup
+            conn.rollback()
+            _logger.warning("hypertable conversion failed; using plain tables: %s", exc)
+            return {table: f"plain: {exc.__class__.__name__}" for table, _ in HYPERTABLES}
+    return result

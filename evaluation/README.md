@@ -74,7 +74,28 @@ implemented component — never stubbed with placeholder numbers.
   detector and test rows. tau 0.6 reproduces the `real_data_comparison` numbers
   exactly (consistency check). Raising tau shrinks the share of false alarms that
   still get autonomous action (50.5% at 0.6, 3.2% at 0.95) while retaining 97.1%
-  of real-attack autonomy; unsafe autonomous actions stay 0. The gate is
-  experiment-only and no tau is selected: calibrating it needs held-out
-  validation data, and the false alarms are concentrated in one predicted class.
+  of real-attack autonomy; unsafe autonomous actions stay 0. This is an
+  exploratory curve measured on the test split itself, so it is NOT a result to
+  quote as deployable (no tau can be chosen on the data it is scored on, and the
+  false alarms are concentrated in one predicted class). The validated version is
+  `calibrated_gating` below.
   Run: `cd backend && python -m app.evaluation.run_confidence_gating --data-dir <iomt folder>`.
+- `calibrated_gating.md` / `.json` — the validated version of the gate. A
+  validation split is carved out of the official train split (whole last capture
+  for classes with several captures; a contiguous tail block with a 1% gap for
+  Benign and ARP_Spoofing, which have one capture each), a dev model is trained
+  without those rows, one temperature (T = 0.917) is fitted on validation, and tau
+  is chosen on validation by a rule declared before any result was seen (largest
+  tau in {0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999} keeping at least 95% of
+  real-attack autonomy). It chose tau = 0.7; the test split was scored once at the
+  end: unnecessary isolation 50.5% to 41.5% (40.0 to 43.2%), real-attack autonomy
+  retained 99.9%, 0 unsafe autonomous actions. Caveats are in the report (validation
+  optimistic for Benign/ARP, one seed, sampled device contexts). Run:
+  `cd backend && python -m app.evaluation.run_calibrated_gating --data-dir <iomt folder>`
+  (about 22 minutes on 2 CPUs).
+- `resilience_metrics.md` / `.json` — measured latency of the decision path and the
+  detector, detection delay in flows per attack capture (rows have no timestamps),
+  and a modelled containment delay for the five systems that depends on an assumed
+  human approval time D (1, 5, 15, 60 minutes). Latency and delay are measured;
+  containment delay is a model and is labelled as one. Run:
+  `cd backend && python -m app.evaluation.run_resilience_metrics --data-dir <iomt folder>`.

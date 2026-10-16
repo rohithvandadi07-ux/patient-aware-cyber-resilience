@@ -106,6 +106,7 @@ from app.blockchain.outbox import (
     enqueue_recovery,
     enqueue_response,
 )
+from app.core.timing import StageTimings
 from app.policy_engine.engine import PolicyEngine
 from app.recovery.engine import InconsistentRecoveryResultError, RecoveryOrchestrator
 from app.repositories.incidents import IncidentRepository
@@ -139,6 +140,10 @@ class CycleResult:
     awaiting_approval_decision: PolicyDecision | None = None
     executed: ExecutedResponse | None = None
     recovery: RecoveryResult | None = None
+    # Wall-clock milliseconds per pipeline stage, summed across re-investigations.
+    # In-process compute only: with the default mock LLM the agent stages are
+    # near-zero, and a real LLM call, queueing and human approval are NOT in it.
+    stage_timings_ms: dict[str, float] = field(default_factory=dict)
 
 
 class IncidentOrchestrator:
@@ -158,6 +163,7 @@ class IncidentOrchestrator:
         outbox_repository: OutboxRepository,
         risk_model: RiskModel,
         max_reinvestigations: int = 2,
+        policy_engine: PolicyEngine | None = None,
     ) -> None:
         self._client = client
         self._toolkit = toolkit
@@ -169,7 +175,8 @@ class IncidentOrchestrator:
         self._outbox_repo = outbox_repository
         self._risk_model = risk_model
         self._max_reinvestigations = max_reinvestigations
-        self._policy_engine = PolicyEngine()
+        self._policy_engine = policy_engine or PolicyEngine()
+        self._timings = StageTimings()
 
     def run_investigation_cycle(
         self, incident_id: str, device_id: str, *, auto_approve: bool = False
@@ -179,7 +186,10 @@ class IncidentOrchestrator:
         gate) -> execution -> recovery verification -> recovery routing,
         and re-enters at investigation if recovery routes to `REOPENED`,
         up to `max_reinvestigations` times."""
-        return self._run(incident_id, device_id, auto_approve=auto_approve, reinvestigation_count=0)
+        self._timings = StageTimings()
+        result = self._run(incident_id, device_id, auto_approve=auto_approve, reinvestigation_count=0)
+        result.stage_timings_ms = self._timings.as_dict()
+        return result
 
     def _run(
         self, incident_id: str, device_id: str, *, auto_approve: bool, reinvestigation_count: int
@@ -190,21 +200,27 @@ class IncidentOrchestrator:
 
         self._incident_repository.update_status(incident_id, IncidentStatus.INVESTIGATING)
         try:
-            report = investigate(self._client, self._toolkit, incident_id=incident_id, device_id=device_id)
+            with self._timings.stage("investigation"):
+                report = investigate(
+                    self._client, self._toolkit, incident_id=incident_id, device_id=device_id
+                )
             history.append("investigation: ok")
 
-            threat = assess_threat(self._client, self._toolkit, report=report, device_id=device_id)
+            with self._timings.stage("threat_reasoning"):
+                threat = assess_threat(self._client, self._toolkit, report=report, device_id=device_id)
             history.append(f"threat_reasoning: ok (attack_type={threat.attack_type.value})")
 
             affected = report.affected_devices or [device_id]
-            context = assess_clinical_context(
-                self._client, self._toolkit, incident_id=incident_id, affected_devices=affected
-            )
+            with self._timings.stage("healthcare_context"):
+                context = assess_clinical_context(
+                    self._client, self._toolkit, incident_id=incident_id, affected_devices=affected
+                )
             history.append("healthcare_context: ok")
 
-            proposal = plan_response(
-                self._client, self._toolkit, threat=threat, context=context, risk_score=None
-            )
+            with self._timings.stage("response_planning"):
+                proposal = plan_response(
+                    self._client, self._toolkit, threat=threat, context=context, risk_score=None
+                )
             history.append(f"response_planning: ok (recommended={proposal.recommended_action.value})")
         except AgentStalledError as exc:
             history.append(f"stalled: {exc}")
@@ -216,13 +232,21 @@ class IncidentOrchestrator:
             )
 
         self._incident_repository.update_status(incident_id, IncidentStatus.RISK_ASSESSED)
-        risk_score = self._risk_model.calculate_risk(threat, context, proposal.candidate_actions)
+        with self._timings.stage("risk_engine"):
+            risk_score = self._risk_model.calculate_risk(threat, context, proposal.candidate_actions)
         history.append(
             f"risk_engine: ok (cyber_risk={risk_score.cyber_risk:.2f}, "
             f"clinical_risk={risk_score.clinical_risk:.2f})"
         )
 
-        decision = self._policy_engine.evaluate(risk_score, proposal, context)
+        # The Threat Reasoning Agent's confidence stands in for the detector's here
+        # (the agent is given the DetectionEvent as evidence). It is only consulted
+        # when the opt-in confidence gate is enabled, and can only demote autonomy
+        # to human approval, never grant it.
+        with self._timings.stage("policy_engine"):
+            decision = self._policy_engine.evaluate(
+                risk_score, proposal, context, detection_confidence=threat.confidence
+            )
         self._proposed_repo.put(decision)
         enqueue_decision(
             self._outbox_repo,
@@ -266,7 +290,8 @@ class IncidentOrchestrator:
 
         self._incident_repository.update_status(incident_id, IncidentStatus.RESPONSE_EXECUTING)
         try:
-            executed = self._response_orchestrator.execute(decision, approval=approval)
+            with self._timings.stage("response_execution"):
+                executed = self._response_orchestrator.execute(decision, approval=approval)
         except (ApprovalRequiredError, ResponseRejectedError, ValueError, NotImplementedError) as exc:
             history.append(f"response_execution: failed: {exc}")
             return CycleResult(
@@ -304,13 +329,14 @@ class IncidentOrchestrator:
         self._incident_repository.update_status(incident_id, IncidentStatus.RECOVERY_VERIFYING)
         response_id = f"{incident_id}-response-{reinvestigation_count + 1}"
         try:
-            recovery_result = verify_recovery(
-                self._client,
-                self._toolkit,
-                incident_id=incident_id,
-                response_id=response_id,
-                device_id=device_id,
-            )
+            with self._timings.stage("recovery_verification"):
+                recovery_result = verify_recovery(
+                    self._client,
+                    self._toolkit,
+                    incident_id=incident_id,
+                    response_id=response_id,
+                    device_id=device_id,
+                )
         except AgentStalledError as exc:
             history.append(f"stalled: {exc}")
             return CycleResult(
@@ -326,7 +352,8 @@ class IncidentOrchestrator:
         )
 
         try:
-            incident = self._recovery_orchestrator.process_result(recovery_result)
+            with self._timings.stage("recovery_routing"):
+                incident = self._recovery_orchestrator.process_result(recovery_result)
         except InconsistentRecoveryResultError as exc:
             history.append(f"recovery routing refused (inconsistent result): {exc}")
             return CycleResult(

@@ -183,6 +183,67 @@ def list_split_files(data_dir: Path, split: str) -> list[Path]:
     return files
 
 
+def cap_rows_per_class(df: pd.DataFrame, max_rows_per_class: int, seed: int = 42) -> pd.DataFrame:
+    """Randomly (seeded) cap each class at `max_rows_per_class` rows, keeping
+    the original row order among the survivors. Small classes are kept whole."""
+    rng = np.random.default_rng(seed)
+    keep: list[np.ndarray] = []
+    for _, idx in df.groupby(LABEL_COLUMN, sort=False).indices.items():
+        if len(idx) > max_rows_per_class:
+            idx = rng.choice(idx, size=max_rows_per_class, replace=False)
+        keep.append(np.sort(idx))
+    return df.iloc[np.concatenate(keep)].reset_index(drop=True)
+
+
+def split_train_validation(
+    df: pd.DataFrame, val_fraction: float = 0.2, gap_fraction: float = 0.01
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, dict[str, object]]]:
+    """Split the TRAIN split into train and validation without random row
+    shuffling (adjacent flows of one capture are near-duplicates, so a random
+    split would leak).
+
+    * A class with two or more capture files: the last file (by name) is held
+      out whole -- a capture-level split, as strict as the official one.
+    * A class with ONE capture file (Benign and ARP_Spoofing are both like
+      this): the final `val_fraction` of its rows, in file order, is held out as
+      a contiguous block, with the `gap_fraction` of rows just before it dropped
+      so the nearest training and validation flows are not neighbours. This is
+      weaker than a capture-level split (same capture, same session), so
+      validation numbers for those classes are expected to be optimistic.
+
+    `df` must be an uncapped `load_split` result (rows in file order). Returns
+    (train, validation, per-class description of how each class was split).
+    """
+    if not 0.0 < val_fraction < 0.5:
+        raise ValueError("val_fraction must be in (0, 0.5)")
+    train_idx: list[np.ndarray] = []
+    val_idx: list[np.ndarray] = []
+    info: dict[str, dict[str, object]] = {}
+    source = df[SOURCE_FILE_COLUMN].to_numpy()
+    for label, idx in df.groupby(LABEL_COLUMN, sort=False).indices.items():
+        files = list(dict.fromkeys(source[idx]))
+        if len(files) >= 2:
+            held = sorted(files)[-1]
+            is_val = source[idx] == held
+            train_idx.append(idx[~is_val])
+            val_idx.append(idx[is_val])
+            info[label] = {"method": "held-out capture", "validation_capture": held, "dropped_gap_rows": 0}
+        else:
+            n = len(idx)
+            start = int(n * (1.0 - val_fraction))
+            gap = int(n * gap_fraction)
+            train_idx.append(idx[: start - gap])
+            val_idx.append(idx[start:])
+            info[label] = {
+                "method": "single capture: contiguous tail block",
+                "validation_capture": files[0],
+                "dropped_gap_rows": gap,
+            }
+    train = df.iloc[np.sort(np.concatenate(train_idx))].reset_index(drop=True)
+    val = df.iloc[np.sort(np.concatenate(val_idx))].reset_index(drop=True)
+    return train, val, info
+
+
 def load_split(
     data_dir: Path,
     split: str,
@@ -217,13 +278,7 @@ def load_split(
     df = pd.concat(frames, ignore_index=True)
 
     if max_rows_per_class is not None:
-        rng = np.random.default_rng(seed)
-        keep: list[np.ndarray] = []
-        for _, idx in df.groupby(LABEL_COLUMN, sort=False).indices.items():
-            if len(idx) > max_rows_per_class:
-                idx = rng.choice(idx, size=max_rows_per_class, replace=False)
-            keep.append(np.sort(idx))
-        df = df.iloc[np.concatenate(keep)].reset_index(drop=True)
+        df = cap_rows_per_class(df, max_rows_per_class, seed)
 
     return df
 

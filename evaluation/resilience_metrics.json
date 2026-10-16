@@ -1,0 +1,316 @@
+{
+  "generated_at": "2026-10-16T16:39:21.043031+00:00",
+  "model_path": "ciciomt2024_xgboost.joblib",
+  "seeds_used": 3,
+  "human_approval_minutes_assumed": [
+    1,
+    5,
+    15,
+    60
+  ],
+  "latency": {
+    "decision_path": {
+      "n": 3000,
+      "p50_ms": 0.01565050001772761,
+      "p95_ms": 0.025469349907325498,
+      "p99_ms": 0.053321299997151066,
+      "max_ms": 0.20842899994022446
+    },
+    "detector": {
+      "single_flow": {
+        "n": 300,
+        "p50_ms": 0.7652285000858683,
+        "p95_ms": 0.9688989497135481,
+        "p99_ms": 1.3931183302702255,
+        "max_ms": 2.990175999912026
+      },
+      "batch": {
+        "flows": 1000,
+        "total_ms": 30.949407999742107,
+        "flows_per_second": 32310.795735037413
+      }
+    }
+  },
+  "detection_delay": {
+    "captures": [
+      {
+        "capture": "ARP_Spoofing_test.pcap.csv",
+        "class": "ARP_Spoofing",
+        "flows": 1744,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.8612385321100917,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "MQTT-DDoS-Connect_Flood_test.pcap.csv",
+        "class": "MQTT-DDoS-Connect_Flood",
+        "flows": 41916,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 1.0,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "MQTT-DDoS-Publish_Flood_test.pcap.csv",
+        "class": "MQTT-DDoS-Publish_Flood",
+        "flows": 8416,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.7454847908745247,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "MQTT-DoS-Connect_Flood_test.pcap.csv",
+        "class": "MQTT-DoS-Connect_Flood",
+        "flows": 3131,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9996806132226126,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "MQTT-DoS-Publish_Flood_test.pcap.csv",
+        "class": "MQTT-DoS-Publish_Flood",
+        "flows": 8505,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9998824221046443,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "MQTT-Malformed_Data_test.pcap.csv",
+        "class": "MQTT-Malformed_Data",
+        "flows": 1747,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9307384087006296,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "Recon-OS_Scan_test.pcap.csv",
+        "class": "Recon-OS_Scan",
+        "flows": 3834,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.8883672404799166,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "Recon-Ping_Sweep_test.pcap.csv",
+        "class": "Recon-Ping_Sweep",
+        "flows": 186,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.8870967741935484,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "Recon-Port_Scan_test.pcap.csv",
+        "class": "Recon-Port_Scan",
+        "flows": 22622,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9820086641322606,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "Recon-VulScan_test.pcap.csv",
+        "class": "Recon-VulScan",
+        "flows": 1034,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.7359767891682786,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DDoS-ICMP1_test.pcap.csv",
+        "class": "TCP_IP-DDoS-ICMP",
+        "flows": 154007,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9991493893134727,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DDoS-ICMP2_test.pcap.csv",
+        "class": "TCP_IP-DDoS-ICMP",
+        "flows": 195692,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9998824683686609,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DDoS-SYN_test.pcap.csv",
+        "class": "TCP_IP-DDoS-SYN",
+        "flows": 172397,
+        "first_alert_flow_index": 1,
+        "share_of_flows_alerted": 0.9989500977395198,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DDoS-TCP_test.pcap.csv",
+        "class": "TCP_IP-DDoS-TCP",
+        "flows": 182598,
+        "first_alert_flow_index": 1,
+        "share_of_flows_alerted": 0.9992332884259412,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DDoS-UDP1_test.pcap.csv",
+        "class": "TCP_IP-DDoS-UDP",
+        "flows": 205654,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9996158596477579,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DDoS-UDP2_test.pcap.csv",
+        "class": "TCP_IP-DDoS-UDP",
+        "flows": 156416,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9991816693944353,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DoS-ICMP_test.pcap.csv",
+        "class": "TCP_IP-DoS-ICMP",
+        "flows": 98432,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.999908566319896,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DoS-SYN_test.pcap.csv",
+        "class": "TCP_IP-DoS-SYN",
+        "flows": 98595,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9998681474719814,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DoS-TCP_test.pcap.csv",
+        "class": "TCP_IP-DoS-TCP",
+        "flows": 82096,
+        "first_alert_flow_index": 1,
+        "share_of_flows_alerted": 0.9991960631455856,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      },
+      {
+        "capture": "TCP_IP-DoS-UDP_test.pcap.csv",
+        "class": "TCP_IP-DoS-UDP",
+        "flows": 137553,
+        "first_alert_flow_index": 0,
+        "share_of_flows_alerted": 0.9998691413491527,
+        "alerted_within_10_flows": true,
+        "alerted_within_100_flows": true
+      }
+    ],
+    "summary": {
+      "captures": 20,
+      "captures_alerted": 20,
+      "captures_alerted_within_10_flows": 20,
+      "captures_alerted_within_100_flows": 20
+    }
+  },
+  "containment": {
+    "detection_only": {
+      "all_devices": {
+        "real_attacks": 1576575,
+        "missed_by_detector": 4424,
+        "alerted": 1572151,
+        "contained_autonomously": 0,
+        "waiting_for_human": 1572151,
+        "share_of_alerts_waiting_for_human": 1.0,
+        "modelled_mean_containment_delay_seconds": {
+          "1": 60.00001565050002,
+          "5": 300.0000156505,
+          "15": 900.0000156505,
+          "60": 3600.0000156505002
+        }
+      },
+      "high_stakes_devices": {
+        "real_attacks": 262923,
+        "missed_by_detector": 708,
+        "alerted": 262215,
+        "contained_autonomously": 0,
+        "waiting_for_human": 262215,
+        "share_of_alerts_waiting_for_human": 1.0,
+        "modelled_mean_containment_delay_seconds": {
+          "1": 60.00001565050002,
+          "5": 300.0000156505,
+          "15": 900.0000156505,
+          "60": 3600.0000156505002
+        }
+      }
+    },
+    "fixed_response": {
+      "all_devices": {
+        "real_attacks": 1576575,
+        "missed_by_detector": 4424,
+        "alerted": 1572151,
+        "contained_autonomously": 1572151,
+        "waiting_for_human": 0,
+        "share_of_alerts_waiting_for_human": 0.0,
+        "modelled_mean_containment_delay_seconds": {
+          "1": 1.565050001772761e-05,
+          "5": 1.565050001772761e-05,
+          "15": 1.565050001772761e-05,
+          "60": 1.565050001772761e-05
+        }
+      },
+      "high_stakes_devices": {
+        "real_attacks": 262923,
+        "missed_by_detector": 708,
+        "alerted": 262215,
+        "contained_autonomously": 262215,
+        "waiting_for_human": 0,
+        "share_of_alerts_waiting_for_human": 0.0,
+        "modelled_mean_containment_delay_seconds": {
+          "1": 1.565050001772761e-05,
+          "5": 1.565050001772761e-05,
+          "15": 1.565050001772761e-05,
+          "60": 1.565050001772761e-05
+        }
+      }
+    },
+    "full_system": {
+      "all_devices": {
+        "real_attacks": 1576575,
+        "missed_by_detector": 4424,
+        "alerted": 1572151,
+        "contained_autonomously": 785858,
+        "waiting_for_human": 786293,
+        "share_of_alerts_waiting_for_human": 0.5001383454897144,
+        "modelled_mean_containment_delay_seconds": {
+          "1": 30.008316379882878,
+          "5": 150.04151929741434,
+          "15": 450.1245265912429,
+          "60": 1800.4980594134715
+        }
+      },
+      "high_stakes_devices": {
+        "real_attacks": 262923,
+        "missed_by_detector": 708,
+        "alerted": 262215,
+        "contained_autonomously": 0,
+        "waiting_for_human": 262215,
+        "share_of_alerts_waiting_for_human": 1.0,
+        "modelled_mean_containment_delay_seconds": {
+          "1": 60.00001565050002,
+          "5": 300.0000156505,
+          "15": 900.0000156505,
+          "60": 3600.0000156505002
+        }
+      }
+    }
+  }
+}

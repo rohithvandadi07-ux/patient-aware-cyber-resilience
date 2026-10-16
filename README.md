@@ -171,8 +171,9 @@ bullet below are the honest account of what that excludes.
   default in-memory path, confirming zero behavior change for anyone not
   opting in. Deliberately NOT covered, same disclosure discipline as
   everything else here: `NetworkEventStore`/`TelemetryStore` (Section 8's
-  separate TimescaleDB-hypertable category — still in-memory, a genuinely
-  different design task); the IoMT simulator's `DeviceRegistry` (live
+  separate TimescaleDB-hypertable category — at this point still
+  in-memory; the final-completion pass below later added Postgres-backed
+  stores for them); the IoMT simulator's `DeviceRegistry` (live
   simulation state, not a persisted catalog); a real migration tool
   (Alembic — `create_all` only); and an async rewrite (a sync driver,
   `psycopg`, was chosen instead so every existing `async def` route's
@@ -302,21 +303,59 @@ bullet below are the honest account of what that excludes.
   from real attacks (AUROC 0.989), and sending low-confidence detections to human
   approval cuts the false-alarm isolation rate from about 50% (tau 0.6) to about
   3% (tau 0.95) at the cost of about 3% of real-attack autonomy, with 0 unsafe
-  autonomous actions throughout. It is experiment-only: the Policy Engine is not
-  changed, and no tau is chosen because that needs validation data held out from
-  this test split.
-- **Still not built, by deliberate and disclosed decision, not oversight:**
-  the TimescaleDB-hypertable half of the Postgres migration
-  (`NetworkEventStore`/`TelemetryStore`); rate limiting; an actual
-  registry-access build/run verification of Phase 14's Docker setup;
-  re-pointing the runtime detector and the Phase 13 ablation harness at the
-  real CICIoMT2024 data (the offline baselines already run on it, see
-  above; the harness and the simulator's feature schema do not yet); a
-  live Gemini call actually exercised end-to-end (the wiring is real and
-  tested offline; no `GEMINI_API_KEY` has been available in this sandbox
-  to prove a live call); and the response-alternatives dashboard view,
-  which needs a `PolicyDecision` schema change before it can show ranked
-  candidates rather than just the one chosen action.
+  autonomous actions throughout. This is an exploratory curve read off the test
+  split, **not a deployable result**: no tau can be chosen on the data it was
+  measured on. The validated version is the next bullet.
+- **Calibrated confidence gate, tau chosen on validation.**
+  `backend/app/evaluation/run_calibrated_gating.py` holds out validation data
+  from the training split (whole last capture for multi-capture classes, a
+  contiguous tail block with a gap for Benign and ARP_Spoofing, which have one
+  capture each), fits one temperature on it, and applies a rule fixed in
+  advance (largest tau keeping at least 95% of real-attack autonomy on
+  validation). It chose tau = 0.7 on the calibrated confidence. On the untouched
+  test split that cuts unnecessary isolation from 50.5% to 41.5% (95% CI 40.0 to
+  43.2%) with 99.9% real-attack autonomy retained and 0 unsafe autonomous
+  actions: a modest, honest gain, much smaller than the exploratory curve
+  suggests. Validation is optimistic for Benign/ARP (validation benign false
+  positive rate 1.25% vs 4.14% on test), one training seed, sampled device
+  contexts. Report: `evaluation/calibrated_gating.md`. The Policy Engine now has
+  the gate as an opt-in rule (`POLICY_MIN_AUTONOMOUS_CONFIDENCE`, off by
+  default): it can only turn an autonomous decision into one needing human
+  approval, never the reverse, and fails closed when the gate is on and the
+  confidence is unknown.
+- **Real-flow detector runtime.** `POST /detections/score-flows` scores real
+  CICIoMT2024 45-feature flow rows with the trained XGBoost model
+  (`RealFlowDetectionService`) and emits the same `DetectionEvent` as the
+  15-feature proxy pipeline, with incident and outbox provenance. The two
+  pipelines are not interchangeable (different feature sets) and the endpoint
+  returns 503 with training instructions if the model artifact is absent.
+- **Resilience metrics.** `backend/app/evaluation/run_resilience_metrics.py`
+  (`evaluation/resilience_metrics.md`): measured decision-path and detector
+  latency (decision path p50 0.016 ms; single-flow detector p50 0.77 ms; about
+  32k flows/s batched, on a 2-CPU sandbox), detection delay counted in flows
+  (rows carry no timestamps; 20 of 20 attack captures alerted within their first
+  flows), and a *modelled* containment delay that depends on an assumed human
+  approval time. In the full system 50.0% of alerts wait for a human (100% on
+  high-stakes devices); that is the cost side of the safety result, reported
+  rather than hidden.
+- **Hardening and storage.** Opt-in rate limiting (429 + Retry-After) and
+  request-body-size limiting (413), both off by default and in-process;
+  `pydantic` pinned; CI gained `frontend` and `e2e` jobs; Postgres-backed
+  `NetworkEventStore`/`TelemetryStore` (TimescaleDB hypertables when the
+  extension exists, plain tables otherwise); and ranked response alternatives
+  on `PolicyDecision`, shown in the dashboard's response panel.
+- **Not verified, by deliberate and disclosed decision, not oversight:**
+  an actual registry-access build/run verification of Phase 14's Docker setup
+  (`docker compose up` could not be run where this was built: container
+  registries were unreachable); a live Gemini call exercised end-to-end (the
+  wiring is real and tested offline; no `GEMINI_API_KEY` was available); the
+  TimescaleDB hypertable branch against a real TimescaleDB server (only plain
+  PostgreSQL is available to the tests; retention/compression policies are not
+  configured); the new CI `frontend`/`e2e` jobs on GitHub's runners (the same
+  commands pass locally). Also not built: a real migration tool (Alembic);
+  distributed rate limiting (the limiter is per-process); the IoMT
+  simulator's feature schema still differs from CICIoMT2024's 45 features, so
+  the proxy pipeline and the real pipeline coexist rather than merge.
 
 If a component isn't listed as implemented above or in
 `docs/architecture.md`, it doesn't exist yet.

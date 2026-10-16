@@ -69,6 +69,14 @@ RULE_AUTONOMOUS_LOW_IMPACT = "autonomous_low_impact"
 RULE_AUTONOMOUS_MEDIUM_NON_DEPENDENT = "autonomous_medium_non_dependent"
 RULE_APPROVAL_MEDIUM_PATIENT_DEPENDENT_GAP_FILL = "approval_medium_patient_dependent_gap_fill"
 RULE_APPROVAL_HIGH_IMPACT = "approval_high_impact"
+# Opt-in confidence gate (see `apply_confidence_gate`). Not part of Section 13's
+# three stated rules -- an addition motivated by evaluation/real_data_comparison.md
+# (about half of the real detector's false alarms still got autonomous isolation)
+# and measured in evaluation/confidence_gating.md / calibrated_gating.md. The first
+# id is the same string the experiment-only gate in evaluation/baseline_systems.py
+# uses, so the two are directly comparable.
+RULE_APPROVAL_LOW_DETECTOR_CONFIDENCE = "approval_low_detector_confidence"
+RULE_APPROVAL_UNKNOWN_DETECTOR_CONFIDENCE = "approval_unknown_detector_confidence"
 
 
 def classify_routing(
@@ -160,3 +168,41 @@ def decide_routing(
     """
     response_impact = get_response_impact_for_action(risk_score, action_category)
     return classify_routing(response_impact, context.patient_dependency, action_category)
+
+
+def apply_confidence_gate(
+    routing: tuple[bool, str, str],
+    detection_confidence: float | None,
+    min_autonomous_confidence: float | None,
+) -> tuple[bool, str, str]:
+    """Optional extra gate on top of `classify_routing`.
+
+    Only ever turns an *autonomous* decision into a human-approval one; it can
+    never make a decision less safe. Disabled (returns `routing` unchanged)
+    when `min_autonomous_confidence` is None, which is the default, so the
+    engine's behavior is exactly Section 13's unless an operator opts in.
+
+    When enabled and the detector's confidence is not supplied, the decision
+    fails closed to human approval: an unknown confidence cannot be vouched
+    for, the same fail-closed stance as auth with no keys configured.
+    """
+    requires_approval, rule_id, rationale = routing
+    if min_autonomous_confidence is None or requires_approval:
+        return routing
+    if detection_confidence is None:
+        return (
+            True,
+            RULE_APPROVAL_UNKNOWN_DETECTOR_CONFIDENCE,
+            "Human approval required: the confidence gate is enabled "
+            f"(min_autonomous_confidence={min_autonomous_confidence}) but no detector confidence "
+            f"was supplied, so autonomy cannot be granted. Would otherwise have been: {rule_id}.",
+        )
+    if detection_confidence < min_autonomous_confidence:
+        return (
+            True,
+            RULE_APPROVAL_LOW_DETECTOR_CONFIDENCE,
+            f"Human approval required: detector confidence {detection_confidence:.3f} is below "
+            f"the autonomous-action minimum {min_autonomous_confidence}. Would otherwise have "
+            f"been: {rule_id}.",
+        )
+    return routing

@@ -68,10 +68,20 @@ TAU_GRID = [0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999]
 
 
 def baseline_pass(
-    true_h: np.ndarray, pred_h: np.ndarray, conf: np.ndarray, *, seed: int, chunk: int = 100_000
+    true_h: np.ndarray,
+    pred_h: np.ndarray,
+    conf: np.ndarray,
+    *,
+    seed: int,
+    chunk: int = 100_000,
+    gate_conf: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     """One `decide_full_system` call per trial. Returns per-trial boolean arrays
-    (`fired`, `attack`, `high_stakes`, `executed`) plus `conf`."""
+    (`fired`, `attack`, `high_stakes`, `executed`) plus `conf`.
+
+    `conf` decides whether a detection fires (the runtime's raw confidence).
+    `gate_conf`, if given, is what the confidence gate is later applied to (for
+    example temperature-calibrated confidence); it defaults to `conf`."""
     risk_model, policy_engine = RuleBasedRiskModel(), PolicyEngine()
     n = len(true_h)
     fired = np.zeros(n, dtype=bool)
@@ -95,7 +105,7 @@ def baseline_pass(
         "attack": true_h != "unknown",
         "high_stakes": high,
         "executed": executed,
-        "conf": conf,
+        "conf": conf if gate_conf is None else gate_conf,
     }
 
 

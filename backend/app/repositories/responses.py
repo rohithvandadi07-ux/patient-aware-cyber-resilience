@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.db import session_scope
 from app.models.orm import ExecutedResponseORM, ProposedResponseORM
 from app.schemas.enums import ResponseActionCategory
-from app.schemas.policy import PolicyDecision
+from app.schemas.policy import AlternativeAction, PolicyDecision
 from app.schemas.response import ExecutedResponse
 
 
@@ -94,6 +94,7 @@ def _decision_from_row(row: ProposedResponseORM) -> PolicyDecision:
         requires_human_approval=row.requires_human_approval,
         policy_rule_id=row.policy_rule_id,
         rationale=row.rationale,
+        alternatives=[AlternativeAction(**a) for a in (row.alternatives or [])],
     )
 
 
@@ -120,6 +121,7 @@ class PostgresProposedResponseRepository:
             row.requires_human_approval = decision.requires_human_approval
             row.policy_rule_id = decision.policy_rule_id
             row.rationale = decision.rationale
+            row.alternatives = [a.model_dump(mode="json") for a in decision.alternatives]
             session.flush()
         return decision
 

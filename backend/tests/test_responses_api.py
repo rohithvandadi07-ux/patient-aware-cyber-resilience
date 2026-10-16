@@ -176,3 +176,70 @@ def test_list_executed_responses_includes_prior_executions():
     all_executed = client.get("/responses/executed").json()
     assert any(e["incident_id"] == "INC-RESP-3" for e in all_executed)
     assert any(e["incident_id"] == "INC-RESP-6" for e in all_executed)
+
+
+# --- opt-in confidence gate (Settings.policy_min_autonomous_confidence) -----
+
+
+def _propose_with_confidence(incident_id, detection_confidence):
+    body = _propose_body(incident_id, "isolate_non_critical", "low", False)
+    if detection_confidence is not None:
+        body["detection_confidence"] = detection_confidence
+    return client.post("/responses/proposed", json=body)
+
+
+def _propose_body(incident_id, action, impact, patient_dependency):
+    risk_score = {
+        "incident_id": incident_id,
+        "cyber_risk": 0.8,
+        "clinical_risk": 0.5,
+        "response_impact": {action: impact},
+        "explanation": "test",
+    }
+    proposed_response = {
+        "incident_id": incident_id,
+        "candidate_actions": [{"action_category": action, "description": "test action"}],
+        "security_benefit": {action: 0.9},
+        "clinical_impact": {action: impact},
+        "recommended_action": action,
+        "rationale": "test rationale",
+    }
+    context = {
+        "incident_id": incident_id,
+        "device_criticality": "low",
+        "patient_dependency": patient_dependency,
+        "clinical_impact_level": impact,
+        "safety_constraints": [],
+    }
+    return {"risk_score": risk_score, "proposed_response": proposed_response, "context": context}
+
+
+def test_confidence_gate_is_off_by_default_and_ignores_the_field():
+    _create_incident("INC-GATE-0")
+    response = _propose_with_confidence("INC-GATE-0", 0.01)
+    assert response.status_code == 201
+    assert response.json()["requires_human_approval"] is False
+
+
+def test_confidence_gate_on_demotes_low_unknown_and_keeps_confident():
+    from app.api.dependencies import get_policy_engine
+    from app.policy_engine.engine import PolicyEngine
+
+    app.dependency_overrides[get_policy_engine] = lambda: PolicyEngine(min_autonomous_confidence=0.9)
+    try:
+        for incident_id, confidence, needs_approval, rule in [
+            ("INC-GATE-1", 0.7, True, "approval_low_detector_confidence"),
+            ("INC-GATE-2", None, True, "approval_unknown_detector_confidence"),
+            ("INC-GATE-3", 0.97, False, "autonomous_low_impact"),
+        ]:
+            _create_incident(incident_id)
+            body = _propose_with_confidence(incident_id, confidence).json()
+            assert body["requires_human_approval"] is needs_approval, incident_id
+            assert body["policy_rule_id"] == rule, incident_id
+    finally:
+        app.dependency_overrides.pop(get_policy_engine, None)
+
+
+def test_detection_confidence_out_of_range_is_rejected():
+    _create_incident("INC-GATE-4")
+    assert _propose_with_confidence("INC-GATE-4", 1.5).status_code == 422

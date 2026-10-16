@@ -14,13 +14,14 @@ the right repositories/registry, so they're assembled here rather than each
 router re-wiring its own.
 """
 
-from fastapi import Request
+from fastapi import Depends, Request
 
 from app.agents.llm_client import LLMClient
 from app.agents.tools import AgentToolkit
 from app.blockchain.fabric_client import FabricClient
 from app.blockchain.outbox import OutboxRepository
 from app.blockchain.outbox_worker import OutboxWorker
+from app.core.config import Settings, get_settings
 from app.iomt_simulator.registry import DeviceRegistry
 from app.orchestration.orchestrator import IncidentOrchestrator
 from app.policy_engine.engine import PolicyEngine
@@ -78,11 +79,13 @@ def get_outbox_worker(request: Request) -> OutboxWorker:
     return request.app.state.outbox_worker
 
 
-def get_policy_engine() -> PolicyEngine:
+def get_policy_engine(settings: Settings = Depends(get_settings)) -> PolicyEngine:
     """Stateless (no LLM call, no stored state -- see `app/policy_engine/`),
     so a fresh instance per request is equivalent to a shared one; not
-    cached on `app.state` because there is nothing to share."""
-    return PolicyEngine()
+    cached on `app.state` because there is nothing to share. The optional
+    confidence gate comes from `Settings.policy_min_autonomous_confidence`
+    (off by default)."""
+    return PolicyEngine(min_autonomous_confidence=settings.policy_min_autonomous_confidence)
 
 
 def get_response_orchestrator(request: Request) -> ResponseOrchestrator:
@@ -143,4 +146,5 @@ def get_incident_orchestrator(request: Request) -> IncidentOrchestrator:
         recovery_orchestrator=get_recovery_orchestrator(request),
         outbox_repository=app_state.outbox_repository,
         risk_model=app_state.risk_model,
+        policy_engine=get_policy_engine(get_settings()),
     )

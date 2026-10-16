@@ -187,6 +187,20 @@ def test_full_cycle_auto_approved_resolves(app, client):
     assert result.executed.action_taken.value == "isolate_critical"
     assert any("auto-approved" in line for line in result.history)
 
+    # Every stage that ran was timed (wall-clock, in-process; mock LLM so agent stages are ~0).
+    assert {
+        "investigation",
+        "threat_reasoning",
+        "healthcare_context",
+        "response_planning",
+        "risk_engine",
+        "policy_engine",
+        "response_execution",
+        "recovery_verification",
+        "recovery_routing",
+    } == set(result.stage_timings_ms)
+    assert all(ms >= 0 for ms in result.stage_timings_ms.values())
+
     # The incident really did pass through every intermediate status this
     # orchestrator is responsible for writing, not just DETECTED -> RESOLVED.
     traces = client.get(f"/agents/{incident_id}").json()

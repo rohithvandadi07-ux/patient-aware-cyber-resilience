@@ -35,3 +35,18 @@ Status: Phase 6 complete.
 
 Verified: 33 tests passing, 100% branch coverage (measured with `coverage.py`,
 not assumed) across `rules.py`/`engine.py`.
+
+**Final-completion additions.**
+
+- **Opt-in detector-confidence gate.** `PolicyEngine(min_autonomous_confidence=...)`
+  (env: `POLICY_MIN_AUTONOMOUS_CONFIDENCE`, off by default) routes an otherwise
+  autonomous decision to human approval when the detector's confidence is below
+  the threshold (`approval_low_detector_confidence`), or when the gate is on and
+  the confidence is unknown (`approval_unknown_detector_confidence`, fail-closed).
+  It only ever converts autonomous to approval, so it cannot make any decision
+  less safe. The threshold must be chosen on validation data, not on the test
+  split; see `evaluation/calibrated_gating.md`.
+- **Ranked alternatives.** `PolicyDecision.alternatives` lists the other scored
+  candidate actions ranked by (approval needed, response impact, security
+  benefit), each with its own rule id; candidates with no score are skipped. The
+  dashboard's response panel renders them as an "Alternatives considered" table.

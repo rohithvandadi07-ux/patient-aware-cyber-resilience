@@ -23,7 +23,7 @@ proposed decision.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.dependencies import (
     get_executed_response_repository,
@@ -61,6 +61,14 @@ class ProposeResponseRequest(BaseModel):
     risk_score: RiskScore
     proposed_response: ProposedResponse
     context: ClinicalContext
+    detection_confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="The detector's confidence for this incident. Only consulted when the Policy "
+        "Engine's opt-in confidence gate is enabled (Settings.policy_min_autonomous_confidence); "
+        "with the gate on and this omitted, autonomy is not granted.",
+    )
 
 
 class ExecuteResponseRequest(BaseModel):
@@ -76,7 +84,9 @@ async def propose_response(
     outbox_repo: OutboxRepository = Depends(get_outbox_repository),
 ) -> PolicyDecision:
     try:
-        decision = policy_engine.evaluate(body.risk_score, body.proposed_response, body.context)
+        decision = policy_engine.evaluate(
+            body.risk_score, body.proposed_response, body.context, body.detection_confidence
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -36,3 +36,17 @@ repository instead of its in-memory counterpart) — see `db.py`'s own
 docstring for why this uses a sync driver (`psycopg`) rather than the
 `asyncpg` already declared in `requirements.txt` since Phase 1, and why
 there's no Alembic migration tool yet.
+
+**Final-completion additions.**
+
+- `limits.py` — pure-ASGI `BodySizeLimitMiddleware` (413 when a request body
+  exceeds `MAX_REQUEST_BODY_BYTES`) and `RateLimitMiddleware` (fixed window,
+  429 with `Retry-After`, keyed by hashed `X-API-Key` else peer IP; `/health`
+  exempt; `RATE_LIMIT_PER_MINUTE`). Both are off by default. The limiter keeps
+  its counters in process memory, so it is per-worker, not distributed.
+- `timing.py` — `StageTimings`, used by the orchestrator to report per-stage
+  milliseconds (`CycleResult.stage_timings_ms`).
+- `db.py` gained `create_hypertables(engine)`, which converts the two
+  time-series tables to TimescaleDB hypertables when the extension exists and
+  returns what happened per table; `_register_state` stores it as
+  `app.state.hypertable_status`.

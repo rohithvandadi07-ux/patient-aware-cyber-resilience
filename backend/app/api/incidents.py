@@ -138,6 +138,7 @@ class CycleResultOut(BaseModel):
     history: list[str]
     awaiting_approval_decision: PolicyDecision | None = None
     executed: ExecutedResponse | None = None
+    stage_timings_ms: dict[str, float] = {}
 
     @classmethod
     def from_cycle_result(cls, result: CycleResult) -> "CycleResultOut":
@@ -148,6 +149,7 @@ class CycleResultOut(BaseModel):
             history=result.history,
             awaiting_approval_decision=result.awaiting_approval_decision,
             executed=result.executed,
+            stage_timings_ms=result.stage_timings_ms,
         )
 
 

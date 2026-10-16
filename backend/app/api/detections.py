@@ -34,10 +34,12 @@ registry's live state happens to be; only the resulting evidence (events,
 telemetry, incidents, outbox entries) is written into shared state.
 """
 
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from app.api.dependencies import (
     get_incident_repository,
@@ -47,8 +49,10 @@ from app.api.dependencies import (
 )
 from app.blockchain.hashing import hash_payload
 from app.blockchain.outbox import OutboxRepository, enqueue_incident
+from app.core.config import Settings, get_settings
 from app.cybersecurity.detection_service import DetectionService, load_model
 from app.cybersecurity.feature_extraction import FeatureWindow
+from app.cybersecurity.real_flow_detection import InvalidFlowError, RealFlowDetectionService
 from app.iomt_simulator.hospital import build_default_fleet
 from app.iomt_simulator.scenario import AttackInjection, ScenarioRunner
 from app.repositories.incidents import IncidentRepository
@@ -154,3 +158,109 @@ async def run_scenario_and_detect(
         enqueue_incident(outbox_repo, provenance)
 
     return detections
+
+
+# ---------------------------------------------------------------- real flows
+
+_real_service_cache: dict[str, RealFlowDetectionService] = {}
+
+
+def get_real_flow_service(settings: Settings = Depends(get_settings)) -> RealFlowDetectionService:
+    """The real 45-feature CICIoMT2024 detector, cached per model path (same
+    never-hot-reload rule as the proxy detector). 503 with training
+    instructions if the (gitignored) artifact has not been produced."""
+    path = settings.real_detector_model_path
+    service = _real_service_cache.get(path)
+    if service is None:
+        try:
+            service = RealFlowDetectionService.from_artifact(Path(path))
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        _real_service_cache[path] = service
+    return service
+
+
+class FlowBatchRequest(BaseModel):
+    """Flow records as emitted by a CICFlowMeter-style sensor: each flow is an
+    object holding all 45 CICIoMT2024 feature values by their dataset column
+    names (including the dataset's own spelling "Magnitue")."""
+
+    device_id: str = Field(min_length=1)
+    timestamp: datetime | None = None
+    flows: list[dict[str, float]] = Field(min_length=1, max_length=1000)
+
+
+class FlowVerdict(BaseModel):
+    flow_index: int
+    predicted_class: str
+    family: str
+    confidence: float
+    detection: DetectionEvent | None
+
+
+class FlowBatchResponse(BaseModel):
+    model_name: str
+    confidence_threshold: float
+    verdicts: list[FlowVerdict]
+    incident_ids: list[str] = Field(
+        description="One incident per distinct attack type detected in the batch, opened from "
+        "that type's most confident detection -- a 1000-flow flood opens one incident, not 1000."
+    )
+
+
+@router.post("/score-flows", response_model=FlowBatchResponse)
+async def score_flows(
+    request: FlowBatchRequest,
+    service: RealFlowDetectionService = Depends(get_real_flow_service),
+    incident_repo: IncidentRepository = Depends(get_incident_repository),
+    outbox_repo: OutboxRepository = Depends(get_outbox_repository),
+) -> FlowBatchResponse:
+    """Score real flow-feature vectors with the real 19-class detector and open
+    an incident (with blockchain provenance) for each distinct attack type it
+    detects. Returns every flow's verdict, benign ones included, so the caller
+    sees what was NOT flagged too."""
+    try:
+        results = service.score_flows(request.device_id, request.flows, request.timestamp)
+    except InvalidFlowError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    best_by_type: dict[str, DetectionEvent] = {}
+    for result in results:
+        d = result.detection
+        if d is not None and (
+            d.attack_type.value not in best_by_type
+            or d.confidence > best_by_type[d.attack_type.value].confidence
+        ):
+            best_by_type[d.attack_type.value] = d
+
+    incident_ids: list[str] = []
+    for detection in best_by_type.values():
+        incident_id = f"INC-{detection.device_id}-{uuid4().hex[:8]}"
+        incident = incident_repo.create(incident_id, device_id=detection.device_id)
+        enqueue_incident(
+            outbox_repo,
+            IncidentProvenance(
+                incident_id=incident.incident_id,
+                device_id=incident.device_id,
+                attack_type=detection.attack_type.value,
+                evidence_hash=hash_payload(detection.evidence_ref),
+                timestamp=detection.timestamp,
+            ),
+        )
+        incident_ids.append(incident.incident_id)
+
+    return FlowBatchResponse(
+        model_name=service.model_name,
+        confidence_threshold=service.confidence_threshold,
+        verdicts=[
+            FlowVerdict(
+                flow_index=r.flow_index,
+                predicted_class=r.predicted_class,
+                family=r.family,
+                confidence=r.confidence,
+                detection=r.detection,
+            )
+            for r in results
+        ],
+        incident_ids=incident_ids,
+    )

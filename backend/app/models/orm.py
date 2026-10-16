@@ -2,9 +2,8 @@
 (`Settings.repository_backend == "postgres"`).
 
 **Scope, read before adding a table here.** Architecture spec Section 8
-names several storage categories; this migration covers exactly the ones
-that are plain relational tables with no time-series or live-simulation
-shape to them:
+names several storage categories; this module covers the plain relational
+tables, plus the two time-series tables (see "Time-series tables" below):
 
 - Incidents (`incidents` -- Section 8's "Device registry, incidents,
   approvals, users | PostgreSQL" row, the incidents half of it).
@@ -16,17 +15,20 @@ shape to them:
 - The blockchain outbox (`outbox_entries` -- Section 8's "Blockchain outbox
   + confirmed transaction IDs | PostgreSQL table, polled by a worker" row).
 
+**Time-series tables** (`network_events`, `telemetry_readings`; backed by
+`PostgresNetworkEventStore`/`PostgresTelemetryStore` in `app/repositories/
+telemetry_events.py`) -- Section 8's TimescaleDB-hypertable row. They are
+ordinary tables with a composite `(id, timestamp)` primary key and a
+`(device_id, timestamp)` index. When the TimescaleDB extension is present,
+`create_hypertables` (`app/core/db.py`) converts them to hypertables on
+`timestamp`; otherwise they stay plain tables and the reason is logged and
+exposed as `app.state.hypertable_status`. The hypertable branch has NOT been
+exercised against a real TimescaleDB server in this repo's test runs (only
+plain PostgreSQL is available to CI), and no retention or compression policy
+is configured -- those remain deployment decisions.
+
 **What this deliberately does NOT cover, and why:**
 
-- **`NetworkEventStore`/`TelemetryStore`** (`app/repositories/
-  telemetry_events.py`) -- Section 8's *separate* TimescaleDB-hypertable
-  row ("Device telemetry, network/security events | TimescaleDB
-  hypertables ... High write volume, queried by time range"). Hypertable
-  chunking, a retention/compression policy, and time-range query patterns
-  are a genuinely different design task from "add a table," not just more
-  of the same work -- scoping it into this pass would have been exactly
-  the kind of unplanned scope expansion this project avoids. Still
-  in-memory; a later, separately-scoped pass.
 - **The IoMT simulator's `DeviceRegistry`** (`app/iomt_simulator/
   registry.py`). This is live, in-process simulation state (each
   device's current operational state, mutated by `ScenarioRunner` as a
@@ -60,7 +62,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -115,6 +117,11 @@ class ProposedResponseORM(Base):
     requires_human_approval: Mapped[bool] = mapped_column(Boolean, nullable=False)
     policy_rule_id: Mapped[str] = mapped_column(String, nullable=False)
     rationale: Mapped[str] = mapped_column(String, nullable=False)
+    # Added after the table first shipped: `create_all` does not alter an existing
+    # table, so a database created before this column needs
+    #   ALTER TABLE proposed_responses ADD COLUMN alternatives JSON;
+    # (nullable, so old rows read back as "no alternatives").
+    alternatives: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True, default=None)
 
 
 class ExecutedResponseORM(Base):
@@ -140,3 +147,37 @@ class OutboxEntryORM(Base):
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class NetworkEventORM(Base):
+    """One row per `NetworkEvent`. Time-series: when the TimescaleDB extension
+    is available, `create_hypertables` (app/core/db.py) converts this table to
+    a hypertable partitioned on `timestamp`. A hypertable's unique indexes must
+    include the partitioning column, hence the composite primary key."""
+
+    __tablename__ = "network_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    device_id: Mapped[str] = mapped_column(String, nullable=False)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    payload: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    is_attack_injection: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (Index("ix_network_events_device_ts", "device_id", "timestamp"),)
+
+
+class TelemetryReadingORM(Base):
+    """One row per `TelemetryReading`; same hypertable treatment as above.
+    `readings` stays a JSON object because its field names are
+    device-type-specific (see `app/schemas/telemetry.py`)."""
+
+    __tablename__ = "telemetry_readings"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    device_id: Mapped[str] = mapped_column(String, nullable=False)
+    readings: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False)
+
+    __table_args__ = (Index("ix_telemetry_readings_device_ts", "device_id", "timestamp"),)

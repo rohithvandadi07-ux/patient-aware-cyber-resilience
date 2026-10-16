@@ -154,6 +154,44 @@ class Settings(BaseSettings):
         "GEMINI_MODEL for a different tier.",
     )
 
+    # --- Request limits (post-Phase-15, opt-in) ---
+    rate_limit_per_minute: int = Field(
+        default=0,
+        ge=0,
+        description="Max requests per client per minute (fixed window; client = API key when "
+        "sent, else peer IP; /health exempt). 0 disables. In-process state, so each worker "
+        "process enforces its own window -- see app/core/limits.py.",
+    )
+    max_request_body_bytes: int = Field(
+        default=0,
+        ge=0,
+        description="Reject request bodies larger than this with 413. 0 disables. A "
+        "`/detections/score-flows` batch of 1000 flows is roughly 1 MB of JSON, so values "
+        "below ~2 MB would reject a full batch.",
+    )
+
+    # --- Policy Engine confidence gate (post-Phase-15, opt-in) ---
+    policy_min_autonomous_confidence: float | None = Field(
+        default=None,
+        gt=0.0,
+        le=1.0,
+        description="When set, the Policy Engine sends an otherwise-autonomous action to human "
+        "approval if the detector's confidence is below this value (or not supplied). Unset (the "
+        "default) leaves the engine exactly as Section 13 specifies. See "
+        "`evaluation/confidence_gating.md` and `evaluation/calibrated_gating.md` for what it does "
+        "on the real detector; the value must be calibrated on validation data, not guessed.",
+    )
+
+    # --- Real-data detector (post-Phase-15) ---
+    real_detector_model_path: str = Field(
+        default="../experiments/models/ciciomt2024_xgboost.joblib",
+        description="Path to the real CICIoMT2024 19-class model written by "
+        "`python -m app.cybersecurity.train_ciciomt2024` (its `.metadata.json` must sit beside it). "
+        "Used only by `POST /detections/score-flows`; the artifact is gitignored, so that endpoint "
+        "returns 503 with training instructions until one exists. Relative paths resolve against "
+        "the backend working directory.",
+    )
+
     # --- Logging ---
     log_level: str = Field(default="INFO", description="DEBUG | INFO | WARNING | ERROR | CRITICAL")
     log_json: bool = Field(

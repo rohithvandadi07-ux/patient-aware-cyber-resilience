@@ -26,20 +26,28 @@ repositories' own tests already follow.
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, text
 
 from app.blockchain.outbox import PostgresOutboxRepository
-from app.core.db import build_session_factory, create_all_tables, to_sync_url
+from app.core.db import (
+    Base,
+    build_session_factory,
+    create_all_tables,
+    create_hypertables,
+    to_sync_url,
+)
 from app.models.orm import (
     AgentTraceORM,
     ExecutedResponseORM,
     IncidentORM,
+    NetworkEventORM,
     OutboxEntryORM,
     ProposedResponseORM,
     RecoveryResultORM,
+    TelemetryReadingORM,
 )
 from app.repositories.agent_traces import PostgresAgentTraceRecorder
 from app.repositories.incidents import IncidentNotFoundError, PostgresIncidentRepository
@@ -49,10 +57,13 @@ from app.repositories.responses import (
     PostgresProposedResponseRepository,
     ProposedResponseNotFoundError,
 )
+from app.repositories.telemetry_events import PostgresNetworkEventStore, PostgresTelemetryStore
 from app.schemas.agents import RecoveryResult
 from app.schemas.enums import IncidentStatus, OutboxRecordType, ResponseActionCategory
+from app.schemas.events import NetworkEvent
 from app.schemas.policy import PolicyDecision
 from app.schemas.response import ExecutedResponse
+from app.schemas.telemetry import TelemetryReading
 
 POSTGRES_TEST_URL = os.environ.get(
     "POSTGRES_TEST_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/pacr_test"
@@ -82,6 +93,11 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def engine():
     eng = create_engine(to_sync_url(POSTGRES_TEST_URL), future=True)
+    # `create_all` never alters an existing table, so a test database left over
+    # from an older schema (e.g. before `proposed_responses.alternatives`) would
+    # fail with a missing-column error. This is a throwaway test database -- the
+    # `session_factory` fixture below already deletes every row -- so rebuild it.
+    Base.metadata.drop_all(eng)
     create_all_tables(eng)
     yield eng
     eng.dispose()
@@ -98,6 +114,8 @@ def session_factory(engine):
             ProposedResponseORM,
             ExecutedResponseORM,
             OutboxEntryORM,
+            NetworkEventORM,
+            TelemetryReadingORM,
         ):
             conn.execute(text(f'DELETE FROM "{orm_class.__tablename__}"'))
         conn.commit()
@@ -294,3 +312,97 @@ def test_app_factory_wires_postgres_backend_end_to_end(engine):
     fetched = client.get("/incidents/INC-PG-E2E-1")
     assert fetched.status_code == 200
     assert fetched.json()["device_id"] == "ventilator-01"
+
+
+# --- time-series stores (events, telemetry) ----------------------------------
+
+_T0 = datetime(2026, 10, 16, 12, 0, 0, tzinfo=UTC)
+
+
+def _events():
+    return [
+        NetworkEvent(
+            device_id="ventilator-01",
+            timestamp=_T0 + timedelta(seconds=i * 5),
+            event_type="spoofed_command" if i == 2 else "command_received",
+            source="10.0.0.9",
+            payload={"command": "set_tidal_volume", "value": str(i)},
+            is_attack_injection=(i == 2),
+        )
+        for i in range(4)
+    ] + [
+        NetworkEvent(device_id="infusion-pump-01", timestamp=_T0, event_type="connection_attempt", source="x")
+    ]
+
+
+def test_network_event_store_roundtrip_filters_and_clear(session_factory):
+    store = PostgresNetworkEventStore(session_factory)
+    events = _events()
+    store.record_many(events)
+
+    assert store.query() == events  # insertion order, lossless (payload + injection flag included)
+    vent = store.query("ventilator-01")
+    assert [e.event_type for e in vent] == [
+        "command_received",
+        "command_received",
+        "spoofed_command",
+        "command_received",
+    ]
+    assert vent[2].is_attack_injection is True
+
+    window = store.query("ventilator-01", since=_T0 + timedelta(seconds=5), until=_T0 + timedelta(seconds=10))
+    assert [e.payload["value"] for e in window] == ["1", "2"]  # inclusive time range
+
+    store.clear()
+    assert store.query() == []
+
+
+def test_telemetry_store_roundtrip_filters_and_clear(session_factory):
+    store = PostgresTelemetryStore(session_factory)
+    readings = [
+        TelemetryReading(
+            device_id="ecg-01", timestamp=_T0 + timedelta(seconds=i), readings={"heart_rate_bpm": 70.0 + i}
+        )
+        for i in range(3)
+    ] + [TelemetryReading(device_id="ventilator-01", timestamp=_T0, readings={"tidal_volume_ml": 500.0})]
+    store.record_many(readings)
+
+    assert store.query() == readings
+    assert [
+        r.readings["heart_rate_bpm"] for r in store.query("ecg-01", since=_T0 + timedelta(seconds=1))
+    ] == [71.0, 72.0]
+    store.clear()
+    assert store.query("ecg-01") == []
+
+
+def test_hypertable_conversion_matches_what_the_database_supports(engine):
+    status = create_hypertables(engine)
+    assert set(status) == {"network_events", "telemetry_readings"}
+    with engine.connect() as conn:
+        has_timescale = conn.execute(
+            text("SELECT 1 FROM pg_available_extensions WHERE name = 'timescaledb'")
+        ).first()
+    if has_timescale:
+        assert set(status.values()) == {"hypertable"}  # TimescaleDB present: must really convert
+    else:
+        # Plain Postgres: tables stay ordinary and the reason is reported, never silently ignored.
+        assert all(v.startswith("plain: timescaledb extension is not installed") for v in status.values())
+
+
+def test_full_app_on_postgres_persists_events_and_telemetry_across_app_instances(engine):
+    from fastapi.testclient import TestClient
+
+    from app.core.app_factory import create_app
+    from app.core.config import Settings
+
+    settings = Settings(repository_backend="postgres", database_url=POSTGRES_TEST_URL)
+    first = create_app(settings)
+    assert set(first.state.hypertable_status) == {"network_events", "telemetry_readings"}
+    first.state.network_event_store.clear()
+    first.state.network_event_store.record_many(_events())
+
+    second = create_app(settings)  # a "restart": new app, same database
+    client = TestClient(second)
+    body = client.get("/events", params={"device_id": "ventilator-01"}).json()
+    assert len(body) == 4 and any(e["is_attack_injection"] for e in body)
+    second.state.network_event_store.clear()

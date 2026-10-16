@@ -7,7 +7,10 @@
 # suite (342 tests) and the Phase 11 E2E suite both still pass against it.
 fastapi==0.143.0
 uvicorn[standard]==0.34.0
-pydantic==2.10.4
+# Bumped from 2.10.4: that pin conflicts with google-genai==2.30.0 (pip reports
+# ResolutionImpossible for a clean `pip install -r requirements.txt`); 2.12.5
+# resolves, and the full backend suite passes against it.
+pydantic==2.12.5
 pydantic-settings==2.7.1
 asyncpg==0.30.0
 sqlalchemy==2.0.36

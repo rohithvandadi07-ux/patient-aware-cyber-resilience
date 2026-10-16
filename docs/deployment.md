@@ -112,9 +112,20 @@ uvicorn app.main:app --reload
   `async def` route handler blocks that worker's event loop for the call's
   duration. Acceptable for this research prototype's actual scale (one
   simulated three-device hospital), not for a high-concurrency deployment.
-- `NetworkEventStore`/`TelemetryStore` (device telemetry and network
-  events) and the live `DeviceRegistry` are **not** covered by this
-  migration — they stay in-memory regardless of `REPOSITORY_BACKEND`.
+- `NetworkEventStore`/`TelemetryStore` (network events and device
+  telemetry) **are** covered when `REPOSITORY_BACKEND=postgres`: tables
+  `network_events` / `telemetry_readings`, converted to TimescaleDB
+  hypertables on startup if the `timescaledb` extension is available (the
+  Compose `db` service image has it). On plain Postgres they stay ordinary
+  indexed tables and the app logs that. **Verified here against plain
+  Postgres only** — no TimescaleDB was available in the development
+  sandbox, so the hypertable branch is unexercised; the first Compose run is
+  its first test. The live `DeviceRegistry` is still in-memory (simulation
+  state, not a catalog).
+- `proposed_responses` gained an `alternatives` JSON column. `create_all`
+  never alters an existing table, so a database created before this change
+  needs `ALTER TABLE proposed_responses ADD COLUMN alternatives JSON;` once
+  (new databases get it automatically).
 - `database_url` still uses the `+asyncpg` DSN form in `.env.example`;
   `to_sync_url()` rewrites it to `+psycopg` internally — you don't need a
   second URL.

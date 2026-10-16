@@ -151,3 +151,55 @@ def test_multiclass_metrics_include_all_labels_even_when_unseen():
     m = multiclass_metrics(y, y.copy(), c.CLASS_NAMES)
     assert set(m["per_class"]) == set(c.CLASS_NAMES)
     assert m["per_class"]["ARP_Spoofing"]["support"] == 0
+
+
+# --- validation split (used by the calibrated-gate experiment) ---------------
+
+
+def _split_frame(tmp_path):
+    train = tmp_path / "train"
+    train.mkdir()
+    _write_csv(train / "Benign_train.pcap.csv", 100, seed=1)
+    _write_csv(train / "TCP_IP-DDoS-UDP1_train.pcap.csv", 30, seed=2)
+    _write_csv(train / "TCP_IP-DDoS-UDP2_train.pcap.csv", 20, seed=3)
+    _write_csv(train / "TCP_IP-DDoS-UDP3_train.pcap.csv", 10, seed=4)
+    return c.load_split(tmp_path, "train")
+
+
+def test_split_holds_out_the_last_whole_capture_for_multi_capture_classes(tmp_path):
+    tr, va, info = c.split_train_validation(_split_frame(tmp_path))
+    udp_val = va[va[c.LABEL_COLUMN] == "TCP_IP-DDoS-UDP"]
+    assert set(udp_val[c.SOURCE_FILE_COLUMN]) == {"TCP_IP-DDoS-UDP3_train.pcap.csv"}
+    assert len(udp_val) == 10
+    assert "TCP_IP-DDoS-UDP3_train.pcap.csv" not in set(tr[c.SOURCE_FILE_COLUMN])
+    assert info["TCP_IP-DDoS-UDP"]["method"] == "held-out capture"
+
+
+def test_split_uses_a_contiguous_tail_block_with_a_gap_for_single_capture_classes(tmp_path):
+    frame = _split_frame(tmp_path)
+    tr, va, info = c.split_train_validation(frame, val_fraction=0.2, gap_fraction=0.05)
+    benign = frame[frame[c.LABEL_COLUMN] == "Benign"]
+    b_tr, b_va = tr[tr[c.LABEL_COLUMN] == "Benign"], va[va[c.LABEL_COLUMN] == "Benign"]
+    assert len(b_va) == 20 and len(b_tr) == 80 - 5  # 20% validation, 5% gap dropped
+    # validation is exactly the last 20 rows of the capture, in order; train the first 75
+    pd.testing.assert_frame_equal(b_va.reset_index(drop=True), benign.iloc[80:].reset_index(drop=True))
+    pd.testing.assert_frame_equal(b_tr.reset_index(drop=True), benign.iloc[:75].reset_index(drop=True))
+    assert info["Benign"]["dropped_gap_rows"] == 5
+
+
+def test_split_never_overlaps_and_rejects_a_bad_fraction(tmp_path):
+    frame = _split_frame(tmp_path)
+    tr, va, _ = c.split_train_validation(frame)
+    assert len(tr) + len(va) <= len(frame)
+    assert not set(map(tuple, tr[c.FEATURE_COLUMNS].to_numpy())) & set(
+        map(tuple, va[c.FEATURE_COLUMNS].to_numpy())
+    )
+    with pytest.raises(ValueError):
+        c.split_train_validation(frame, val_fraction=0.7)
+
+
+def test_cap_rows_per_class_is_public_and_matches_load_split(tmp_path):
+    _write_csv(tmp_path / "TCP_IP-DoS-SYN1_train.pcap.csv", 50, seed=2)
+    full = c.load_split(tmp_path, "train")
+    capped = c.cap_rows_per_class(full, 10, seed=7)
+    pd.testing.assert_frame_equal(capped, c.load_split(tmp_path, "train", max_rows_per_class=10, seed=7))

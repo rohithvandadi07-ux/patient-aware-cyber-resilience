@@ -132,6 +132,72 @@ describe('ResponsePanel', () => {
     expect(screen.getByRole('button', { name: 'Execute (no approval required)' })).toBeInTheDocument()
   })
 
+  it('lists the ranked alternatives the Policy Engine considered, with their routing', async () => {
+    mockFetchByUrl([
+      {
+        match: '/responses/proposed/INC-1',
+        response: () =>
+          jsonResponse({
+            incident_id: 'INC-1',
+            chosen_action: 'shutdown',
+            requires_human_approval: true,
+            policy_rule_id: 'patient_dependent_severe_action',
+            rationale: 'needs a human',
+            alternatives: [
+              {
+                action: 'block_traffic',
+                response_impact: 'low',
+                requires_human_approval: false,
+                policy_rule_id: 'autonomous_low_impact',
+                security_benefit: 0.5,
+              },
+              {
+                action: 'isolate_critical',
+                response_impact: 'high',
+                requires_human_approval: true,
+                policy_rule_id: 'patient_dependent_severe_action',
+                security_benefit: null,
+              },
+            ],
+          }),
+      },
+      { match: '/responses/executed/INC-1', response: () => jsonResponse([]) },
+    ])
+
+    renderPanel([], null)
+
+    expect(await screen.findByText('Alternatives considered')).toBeInTheDocument()
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('block_traffic')
+    expect(rows[1]).toHaveTextContent('autonomous')
+    expect(rows[1]).toHaveTextContent('0.50')
+    expect(rows[2]).toHaveTextContent('isolate_critical')
+    expect(rows[2]).toHaveTextContent('needs approval')
+    expect(rows[2]).toHaveTextContent('—')
+  })
+
+  it('shows no alternatives section when the decision has none', async () => {
+    mockFetchByUrl([
+      {
+        match: '/responses/proposed/INC-1',
+        response: () =>
+          jsonResponse({
+            incident_id: 'INC-1',
+            chosen_action: 'block_traffic',
+            requires_human_approval: false,
+            policy_rule_id: 'autonomous_low_impact',
+            rationale: 'ok',
+          }),
+      },
+      { match: '/responses/executed/INC-1', response: () => jsonResponse([]) },
+    ])
+
+    renderPanel([], null)
+
+    expect(await screen.findByText('block_traffic')).toBeInTheDocument()
+    expect(screen.queryByText('Alternatives considered')).not.toBeInTheDocument()
+  })
+
   it('shows an approval form when the policy decision requires human approval, and disables execute until an approver is entered', async () => {
     mockFetchByUrl([
       {

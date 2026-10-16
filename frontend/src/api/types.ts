@@ -180,12 +180,23 @@ export interface RiskScore {
 
 // --- app/schemas/policy.py ---
 
+/** A candidate action the Policy Engine considered but did not choose, routed by the same rules. */
+export interface AlternativeAction {
+  action: ResponseActionCategory
+  response_impact: ImpactLevel
+  requires_human_approval: boolean
+  policy_rule_id: string
+  security_benefit: number | null
+}
+
 export interface PolicyDecision {
   incident_id: string
   chosen_action: ResponseActionCategory
   requires_human_approval: boolean
   policy_rule_id: string
   rationale: string
+  /** Ranked: autonomous before approval-required, then lower impact, then higher benefit. */
+  alternatives?: AlternativeAction[]
 }
 
 // --- app/schemas/response.py ---

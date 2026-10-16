@@ -19,14 +19,21 @@ same public methods, same return types, backed by a real table
 instead of a dict/list. `Settings.repository_backend` ("memory" by default,
 "postgres" to use the real tables — see `app/core/config.py`) picks which
 one `app/core/app_factory.py`'s `_register_state` actually constructs.
-`telemetry_events.py` and `log_capture.py` are deliberately NOT part of
-this migration: `NetworkEventStore`/`TelemetryStore` are Section 8's
-*separate* TimescaleDB-hypertable category (chunking, retention, time-range
-queries — a genuinely different design task), and `log_capture.py` was
-never named in Section 8 as persisted storage. Both remain in-memory only,
-not silently forgotten — see `app/models/orm.py`'s module docstring for the
-full scope disclosure, and `docs/postgres-migration.md` for the real
-verification numbers behind this.
+`log_capture.py` was never named in Section 8 as persisted storage and stays
+in-memory only.
+
+**Final-completion update:** `telemetry_events.py` now also defines
+`PostgresNetworkEventStore` and `PostgresTelemetryStore` (record / record_many /
+query by device and time range / clear), backed by the `network_events` and
+`telemetry_readings` tables. When the TimescaleDB extension is installed,
+`app/core/db.py`'s `create_hypertables` converts them to hypertables; otherwise
+they remain plain tables, and the outcome is exposed as
+`app.state.hypertable_status`. The hypertable branch has not been run against a
+real TimescaleDB server here, and no retention/compression policy is set. The
+in-memory stores gained the same `query(device_id, since, until)` method so both
+backends share one interface. See `app/models/orm.py`'s module docstring for the
+full scope disclosure, and `docs/postgres-migration.md` for the earlier
+verification numbers.
 
 `app/iomt_simulator/registry.py`'s `DeviceRegistry` (Phase 2) still follows
 the original in-memory-only pattern and predates this directory — it is

@@ -13,7 +13,7 @@ migration's own repository code.
 
 ## Scope
 
-Six tables, matching exactly the repositories that got a real Postgres
+Eight tables (six relational plus the two time-series ones below), matching the repositories that got a real Postgres
 implementation in this migration:
 
 - `incidents` — `IncidentORM`
@@ -24,12 +24,15 @@ implementation in this migration:
 - `outbox_entries` — `OutboxEntryORM`
 
 `orm.py`'s own module docstring has the full disclosure (quoted in brief
-here, read it there for the real detail): `NetworkEventStore`/
-`TelemetryStore` (Section 8's separate TimescaleDB-hypertable category —
-chunking, retention, time-range queries, a genuinely different design
-task) and the IoMT simulator's `DeviceRegistry` (live simulation state, not
-a persisted catalog) are deliberately NOT covered — still in-memory, not
-an oversight. There is also no Alembic migration here — `app/core/db.py`'s
+here, read it there for the real detail): the IoMT simulator's
+`DeviceRegistry` (live simulation state, not a persisted catalog) is
+deliberately NOT covered, not an oversight. The two time-series tables
+`network_events` (`NetworkEventORM`) and `telemetry_readings`
+(`TelemetryReadingORM`) are covered; they become TimescaleDB hypertables when
+the extension is present (unverified against a real TimescaleDB server).
+`proposed_responses` also gained a nullable `alternatives` JSON column; a
+database created earlier needs `ALTER TABLE proposed_responses ADD COLUMN
+alternatives JSON;`. There is also no Alembic migration here — `app/core/db.py`'s
 `create_all_tables` is additive-only `CREATE TABLE IF NOT EXISTS`, adequate
 while this project controls the schema completely and has no production
 data in it.

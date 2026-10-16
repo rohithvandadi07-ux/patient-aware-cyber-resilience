@@ -78,6 +78,36 @@ export function ResponsePanel({
             </p>
             <p className="text-gray-600 dark:text-gray-300">{proposedQuery.data.rationale}</p>
 
+            {(proposedQuery.data.alternatives?.length ?? 0) > 0 && (
+              <div>
+                <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Alternatives considered
+                </h4>
+                <table className="w-full text-left text-xs">
+                  <thead className="text-gray-400">
+                    <tr>
+                      <th className="py-1 pr-2 font-medium">Action</th>
+                      <th className="py-1 pr-2 font-medium">Clinical impact</th>
+                      <th className="py-1 pr-2 font-medium">Routing</th>
+                      <th className="py-1 font-medium">Security benefit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {proposedQuery.data.alternatives!.map((alt) => (
+                      <tr key={alt.action} className="border-t border-gray-100 dark:border-gray-800/60">
+                        <td className="py-1 pr-2">{alt.action}</td>
+                        <td className="py-1 pr-2">{alt.response_impact}</td>
+                        <td className="py-1 pr-2" title={alt.policy_rule_id}>
+                          {alt.requires_human_approval ? 'needs approval' : 'autonomous'}
+                        </td>
+                        <td className="py-1">{alt.security_benefit === null ? '—' : alt.security_benefit.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {proposedQuery.data.requires_human_approval ? (
               <div className="space-y-2 rounded border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
                 <p className="text-xs font-medium text-amber-700 dark:text-amber-300">

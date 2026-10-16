@@ -64,6 +64,13 @@ def _register_middleware(app: FastAPI, settings: Settings) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Added after CORS so they sit OUTSIDE it (Starlette runs the last-added
+    # middleware first): an over-limit request is refused before any routing.
+    # Both are no-ops at their default of 0.
+    from app.core.limits import BodySizeLimitMiddleware, RateLimitMiddleware
+
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_body_bytes)
+    app.add_middleware(RateLimitMiddleware, per_minute=settings.rate_limit_per_minute)
 
 
 def _register_state(app: FastAPI, settings: Settings) -> None:
@@ -115,8 +122,6 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
 
     app.state.device_registry = build_default_fleet()
-    app.state.network_event_store = NetworkEventStore()
-    app.state.telemetry_store = TelemetryStore()
 
     if settings.repository_backend == "postgres":
         # Real Postgres required (see `app/core/db.py` for the sync-driver
@@ -136,6 +141,16 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
         app.state.proposed_response_repository = PostgresProposedResponseRepository(session_factory)
         app.state.executed_response_repository = PostgresExecutedResponseRepository(session_factory)
         app.state.outbox_repository = PostgresOutboxRepository(session_factory)
+        # Time-series stores (events, telemetry): Postgres tables, converted to
+        # TimescaleDB hypertables when the extension exists (plain tables otherwise;
+        # the outcome is logged and kept on app.state for /health-style inspection).
+        from app.core.db import create_hypertables
+        from app.repositories.telemetry_events import PostgresNetworkEventStore, PostgresTelemetryStore
+
+        app.state.hypertable_status = create_hypertables(engine)
+        _logger.info("time-series table storage: %s", app.state.hypertable_status)
+        app.state.network_event_store = PostgresNetworkEventStore(session_factory)
+        app.state.telemetry_store = PostgresTelemetryStore(session_factory)
     else:
         app.state.incident_repository = IncidentRepository()
         app.state.agent_trace_recorder = AgentTraceRecorder()
@@ -143,6 +158,8 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
         app.state.proposed_response_repository = ProposedResponseRepository()
         app.state.executed_response_repository = ExecutedResponseRepository()
         app.state.outbox_repository = OutboxRepository()
+        app.state.network_event_store = NetworkEventStore()
+        app.state.telemetry_store = TelemetryStore()
 
     if settings.fabric_client_mode == "subprocess":
         # Real native-Fabric network required (blockchain/network/README.md)
