@@ -296,6 +296,15 @@ bullet below are the honest account of what that excludes.
   isolates a device on roughly half of the detector's benign false positives, a
   limitation reported rather than hidden. The clinical device context and the
   three LLM-backed agents remain disclosed stand-ins.
+- **Confidence-gate experiment.** `backend/app/evaluation/run_confidence_gating.py`
+  sweeps a pre-declared grid of detector-confidence thresholds on the same real
+  detector (`evaluation/confidence_gating.md`). Confidence separates false alarms
+  from real attacks (AUROC 0.989), and sending low-confidence detections to human
+  approval cuts the false-alarm isolation rate from about 50% (tau 0.6) to about
+  3% (tau 0.95) at the cost of about 3% of real-attack autonomy, with 0 unsafe
+  autonomous actions throughout. It is experiment-only: the Policy Engine is not
+  changed, and no tau is chosen because that needs validation data held out from
+  this test split.
 - **Still not built, by deliberate and disclosed decision, not oversight:**
   the TimescaleDB-hypertable half of the Postgres migration
   (`NetworkEventStore`/`TelemetryStore`); rate limiting; an actual

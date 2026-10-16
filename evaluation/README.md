@@ -69,3 +69,12 @@ implemented component — never stubbed with placeholder numbers.
   false positives also make `unnecessary_isolation_rate` measurable for the first
   time (about 50% for `full_system`). Run:
   `cd backend && python -m app.evaluation.run_real_data_comparison --data-dir <iomt folder>`.
+- `confidence_gating.md` / `.json` — a pre-declared sweep of a detector-confidence
+  gate (tau 0.6 to 0.999) in front of the `full_system` decision, on the same real
+  detector and test rows. tau 0.6 reproduces the `real_data_comparison` numbers
+  exactly (consistency check). Raising tau shrinks the share of false alarms that
+  still get autonomous action (50.5% at 0.6, 3.2% at 0.95) while retaining 97.1%
+  of real-attack autonomy; unsafe autonomous actions stay 0. The gate is
+  experiment-only and no tau is selected: calibrating it needs held-out
+  validation data, and the false alarms are concentrated in one predicted class.
+  Run: `cd backend && python -m app.evaluation.run_confidence_gating --data-dir <iomt folder>`.

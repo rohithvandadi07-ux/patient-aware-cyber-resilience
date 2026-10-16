@@ -75,6 +75,7 @@ systems, not just three) and its six "without-X" ablations:
 
 from __future__ import annotations
 
+import dataclasses
 import random
 from dataclasses import dataclass
 from enum import StrEnum
@@ -398,6 +399,45 @@ def decide_full_system(
         requires_human_approval=decision.requires_human_approval,
         executed_action=None if decision.requires_human_approval else action,
         policy_rule_id=decision.policy_rule_id,
+    )
+
+
+# Rule id reported by the experiment-only confidence gate below. It is NOT a rule of
+# the real Policy Engine (`app/policy_engine/rules.py`); see the function's docstring.
+CONFIDENCE_GATE_RULE_ID = "approval_low_detector_confidence"
+
+
+def decide_full_system_confidence_gated(
+    detection: DetectionOutcome,
+    context: DeviceContext,
+    incident_id: str,
+    *,
+    risk_model: RuleBasedRiskModel,
+    policy_engine: PolicyEngine,
+    min_autonomous_confidence: float,
+) -> SystemDecision:
+    """EXPERIMENT-ONLY variant: `full_system` plus one extra gate -- an action the
+    real Policy Engine would execute autonomously is instead sent to human
+    approval when the detector's own confidence is below
+    `min_autonomous_confidence`.
+
+    This exists to measure whether detector confidence separates real attacks
+    from false alarms well enough to be worth adding to the Policy Engine; it
+    deliberately does not touch `app/policy_engine/`. The gate can only turn an
+    autonomous execution into an approval request, never the reverse, so it
+    cannot make any decision less safe than `full_system`'s (asserted by tests
+    and by the sweep).
+    """
+    base = decide_full_system(
+        detection, context, incident_id, risk_model=risk_model, policy_engine=policy_engine
+    )
+    if base.executed_action is None or detection.confidence >= min_autonomous_confidence:
+        return base
+    return dataclasses.replace(
+        base,
+        requires_human_approval=True,
+        executed_action=None,
+        policy_rule_id=CONFIDENCE_GATE_RULE_ID,
     )
 
 

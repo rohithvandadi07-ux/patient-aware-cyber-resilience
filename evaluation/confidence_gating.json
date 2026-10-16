@@ -1,0 +1,1060 @@
+{
+  "generated_at": "2026-10-16T15:56:31.813716+00:00",
+  "trials": 1614182,
+  "detection_threshold": 0.6,
+  "tau_grid": [
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    0.95,
+    0.99,
+    0.999
+  ],
+  "seeds": [
+    2026,
+    9945,
+    17864,
+    25783,
+    33702
+  ],
+  "confidence_separation": {
+    "true_positives": 1572151,
+    "false_positives": 1174,
+    "tp_median": 0.9999984502792358,
+    "fp_median": 0.7582676410675049,
+    "fp_confidence_quantiles_5_25_50_75_95": [
+      0.6194179803133011,
+      0.6878993213176727,
+      0.7582676112651825,
+      0.9028957933187485,
+      0.9579110920429229
+    ],
+    "auroc": 0.9893167423435557,
+    "fp_predicted_class_counts": {
+      "ARP_Spoofing": 1108,
+      "Recon-Port_Scan": 35,
+      "MQTT-Malformed_Data": 14,
+      "Recon-OS_Scan": 7,
+      "Recon-Ping_Sweep": 6,
+      "Recon-VulScan": 4
+    },
+    "fp_share_predicted_arp_spoofing": 0.9437819420783645
+  },
+  "equivalence_checked": 3000,
+  "per_seed": [
+    [
+      {
+        "tau": 0.6,
+        "unnecessary_isolation": {
+          "numerator": 575,
+          "denominator": 1174,
+          "rate": 0.489778534923339
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 785037,
+          "denominator": 785037,
+          "rate": 1.0
+        },
+        "approvals_added": {
+          "total": 0,
+          "of_which_real_attacks": 0,
+          "of_which_false_alarms": 0,
+          "per_1000_detections": 0.0
+        }
+      },
+      {
+        "tau": 0.7,
+        "unnecessary_isolation": {
+          "numerator": 414,
+          "denominator": 1174,
+          "rate": 0.3526405451448041
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 783859,
+          "denominator": 785037,
+          "rate": 0.9984994337846497
+        },
+        "approvals_added": {
+          "total": 1339,
+          "of_which_real_attacks": 1178,
+          "of_which_false_alarms": 161,
+          "per_1000_detections": 0.851063829787234
+        }
+      },
+      {
+        "tau": 0.8,
+        "unnecessary_isolation": {
+          "numerator": 262,
+          "denominator": 1174,
+          "rate": 0.2231686541737649
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 782016,
+          "denominator": 785037,
+          "rate": 0.9961517737380531
+        },
+        "approvals_added": {
+          "total": 3334,
+          "of_which_real_attacks": 3021,
+          "of_which_false_alarms": 313,
+          "per_1000_detections": 2.1190790205456596
+        }
+      },
+      {
+        "tau": 0.9,
+        "unnecessary_isolation": {
+          "numerator": 146,
+          "denominator": 1174,
+          "rate": 0.12436115843270869
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 762921,
+          "denominator": 785037,
+          "rate": 0.9718280794408416
+        },
+        "approvals_added": {
+          "total": 22545,
+          "of_which_real_attacks": 22116,
+          "of_which_false_alarms": 429,
+          "per_1000_detections": 14.32952505045048
+        }
+      },
+      {
+        "tau": 0.95,
+        "unnecessary_isolation": {
+          "numerator": 31,
+          "denominator": 1174,
+          "rate": 0.026405451448040886
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 762124,
+          "denominator": 785037,
+          "rate": 0.9708128406686564
+        },
+        "approvals_added": {
+          "total": 23457,
+          "of_which_real_attacks": 22913,
+          "of_which_false_alarms": 544,
+          "per_1000_detections": 14.90918913765433
+        }
+      },
+      {
+        "tau": 0.99,
+        "unnecessary_isolation": {
+          "numerator": 5,
+          "denominator": 1174,
+          "rate": 0.004258943781942078
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 760225,
+          "denominator": 785037,
+          "rate": 0.9683938464046917
+        },
+        "approvals_added": {
+          "total": 25382,
+          "of_which_real_attacks": 24812,
+          "of_which_false_alarms": 570,
+          "per_1000_detections": 16.132712567333513
+        }
+      },
+      {
+        "tau": 0.999,
+        "unnecessary_isolation": {
+          "numerator": 0,
+          "denominator": 1174,
+          "rate": 0.0
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 263116,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 756461,
+          "denominator": 785037,
+          "rate": 0.9635991679373074
+        },
+        "approvals_added": {
+          "total": 29151,
+          "of_which_real_attacks": 28576,
+          "of_which_false_alarms": 575,
+          "per_1000_detections": 18.528276103157324
+        }
+      }
+    ],
+    [
+      {
+        "tau": 0.6,
+        "unnecessary_isolation": {
+          "numerator": 576,
+          "denominator": 1174,
+          "rate": 0.4906303236797274
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 786003,
+          "denominator": 786003,
+          "rate": 1.0
+        },
+        "approvals_added": {
+          "total": 0,
+          "of_which_real_attacks": 0,
+          "of_which_false_alarms": 0,
+          "per_1000_detections": 0.0
+        }
+      },
+      {
+        "tau": 0.7,
+        "unnecessary_isolation": {
+          "numerator": 414,
+          "denominator": 1174,
+          "rate": 0.3526405451448041
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 784808,
+          "denominator": 786003,
+          "rate": 0.9984796495687676
+        },
+        "approvals_added": {
+          "total": 1357,
+          "of_which_real_attacks": 1195,
+          "of_which_false_alarms": 162,
+          "per_1000_detections": 0.862504568350468
+        }
+      },
+      {
+        "tau": 0.8,
+        "unnecessary_isolation": {
+          "numerator": 254,
+          "denominator": 1174,
+          "rate": 0.21635434412265758
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 782969,
+          "denominator": 786003,
+          "rate": 0.9961399638423772
+        },
+        "approvals_added": {
+          "total": 3356,
+          "of_which_real_attacks": 3034,
+          "of_which_false_alarms": 322,
+          "per_1000_detections": 2.133062145456279
+        }
+      },
+      {
+        "tau": 0.9,
+        "unnecessary_isolation": {
+          "numerator": 144,
+          "denominator": 1174,
+          "rate": 0.12265758091993186
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 763671,
+          "denominator": 786003,
+          "rate": 0.971587894702692
+        },
+        "approvals_added": {
+          "total": 22764,
+          "of_which_real_attacks": 22332,
+          "of_which_false_alarms": 432,
+          "per_1000_detections": 14.468720702969826
+        }
+      },
+      {
+        "tau": 0.95,
+        "unnecessary_isolation": {
+          "numerator": 42,
+          "denominator": 1174,
+          "rate": 0.03577512776831346
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 762869,
+          "denominator": 786003,
+          "rate": 0.9705675423630699
+        },
+        "approvals_added": {
+          "total": 23668,
+          "of_which_real_attacks": 23134,
+          "of_which_false_alarms": 534,
+          "per_1000_detections": 15.043300017478906
+        }
+      },
+      {
+        "tau": 0.99,
+        "unnecessary_isolation": {
+          "numerator": 9,
+          "denominator": 1174,
+          "rate": 0.007666098807495741
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 760995,
+          "denominator": 786003,
+          "rate": 0.9681833275445514
+        },
+        "approvals_added": {
+          "total": 25575,
+          "of_which_real_attacks": 25008,
+          "of_which_false_alarms": 567,
+          "per_1000_detections": 16.255382708594855
+        }
+      },
+      {
+        "tau": 0.999,
+        "unnecessary_isolation": {
+          "numerator": 0,
+          "denominator": 1174,
+          "rate": 0.0
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262923,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 757185,
+          "denominator": 786003,
+          "rate": 0.9633360178014587
+        },
+        "approvals_added": {
+          "total": 29394,
+          "of_which_real_attacks": 28818,
+          "of_which_false_alarms": 576,
+          "per_1000_detections": 18.682726073760985
+        }
+      }
+    ],
+    [
+      {
+        "tau": 0.6,
+        "unnecessary_isolation": {
+          "numerator": 593,
+          "denominator": 1174,
+          "rate": 0.5051107325383305
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 786534,
+          "denominator": 786534,
+          "rate": 1.0
+        },
+        "approvals_added": {
+          "total": 0,
+          "of_which_real_attacks": 0,
+          "of_which_false_alarms": 0,
+          "per_1000_detections": 0.0
+        }
+      },
+      {
+        "tau": 0.7,
+        "unnecessary_isolation": {
+          "numerator": 416,
+          "denominator": 1174,
+          "rate": 0.3543441226575809
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 785342,
+          "denominator": 786534,
+          "rate": 0.9984844901809712
+        },
+        "approvals_added": {
+          "total": 1369,
+          "of_which_real_attacks": 1192,
+          "of_which_false_alarms": 177,
+          "per_1000_detections": 0.8701317273926239
+        }
+      },
+      {
+        "tau": 0.8,
+        "unnecessary_isolation": {
+          "numerator": 268,
+          "denominator": 1174,
+          "rate": 0.2282793867120954
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 783473,
+          "denominator": 786534,
+          "rate": 0.9961082419831819
+        },
+        "approvals_added": {
+          "total": 3386,
+          "of_which_real_attacks": 3061,
+          "of_which_false_alarms": 325,
+          "per_1000_detections": 2.1521300430616686
+        }
+      },
+      {
+        "tau": 0.9,
+        "unnecessary_isolation": {
+          "numerator": 152,
+          "denominator": 1174,
+          "rate": 0.12947189097103917
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 764226,
+          "denominator": 786534,
+          "rate": 0.9716375897291153
+        },
+        "approvals_added": {
+          "total": 22749,
+          "of_which_real_attacks": 22308,
+          "of_which_false_alarms": 441,
+          "per_1000_detections": 14.45918675416713
+        }
+      },
+      {
+        "tau": 0.95,
+        "unnecessary_isolation": {
+          "numerator": 29,
+          "denominator": 1174,
+          "rate": 0.024701873935264053
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 763444,
+          "denominator": 786534,
+          "rate": 0.9706433542605915
+        },
+        "approvals_added": {
+          "total": 23654,
+          "of_which_real_attacks": 23090,
+          "of_which_false_alarms": 564,
+          "per_1000_detections": 15.034401665263058
+        }
+      },
+      {
+        "tau": 0.99,
+        "unnecessary_isolation": {
+          "numerator": 7,
+          "denominator": 1174,
+          "rate": 0.00596252129471891
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 761584,
+          "denominator": 786534,
+          "rate": 0.9682785486704961
+        },
+        "approvals_added": {
+          "total": 25536,
+          "of_which_real_attacks": 24950,
+          "of_which_false_alarms": 586,
+          "per_1000_detections": 16.230594441707847
+        }
+      },
+      {
+        "tau": 0.999,
+        "unnecessary_isolation": {
+          "numerator": 0,
+          "denominator": 1174,
+          "rate": 0.0
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262730,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 757682,
+          "denominator": 786534,
+          "rate": 0.9633175425347156
+        },
+        "approvals_added": {
+          "total": 29445,
+          "of_which_real_attacks": 28852,
+          "of_which_false_alarms": 593,
+          "per_1000_detections": 18.715141499690148
+        }
+      }
+    ],
+    [
+      {
+        "tau": 0.6,
+        "unnecessary_isolation": {
+          "numerator": 620,
+          "denominator": 1174,
+          "rate": 0.5281090289608177
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 786231,
+          "denominator": 786231,
+          "rate": 1.0
+        },
+        "approvals_added": {
+          "total": 0,
+          "of_which_real_attacks": 0,
+          "of_which_false_alarms": 0,
+          "per_1000_detections": 0.0
+        }
+      },
+      {
+        "tau": 0.7,
+        "unnecessary_isolation": {
+          "numerator": 447,
+          "denominator": 1174,
+          "rate": 0.3807495741056218
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 785044,
+          "denominator": 786231,
+          "rate": 0.9984902655835244
+        },
+        "approvals_added": {
+          "total": 1360,
+          "of_which_real_attacks": 1187,
+          "of_which_false_alarms": 173,
+          "per_1000_detections": 0.8644113581110069
+        }
+      },
+      {
+        "tau": 0.8,
+        "unnecessary_isolation": {
+          "numerator": 280,
+          "denominator": 1174,
+          "rate": 0.23850085178875638
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 783168,
+          "denominator": 786231,
+          "rate": 0.9961041983844443
+        },
+        "approvals_added": {
+          "total": 3403,
+          "of_which_real_attacks": 3063,
+          "of_which_false_alarms": 340,
+          "per_1000_detections": 2.1629351850380565
+        }
+      },
+      {
+        "tau": 0.9,
+        "unnecessary_isolation": {
+          "numerator": 158,
+          "denominator": 1174,
+          "rate": 0.13458262350936967
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 763977,
+          "denominator": 786231,
+          "rate": 0.9716953414454531
+        },
+        "approvals_added": {
+          "total": 22716,
+          "of_which_real_attacks": 22254,
+          "of_which_false_alarms": 462,
+          "per_1000_detections": 14.438212066801201
+        }
+      },
+      {
+        "tau": 0.95,
+        "unnecessary_isolation": {
+          "numerator": 44,
+          "denominator": 1174,
+          "rate": 0.03747870528109029
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 763171,
+          "denominator": 786231,
+          "rate": 0.9706701974356137
+        },
+        "approvals_added": {
+          "total": 23636,
+          "of_which_real_attacks": 23060,
+          "of_which_false_alarms": 576,
+          "per_1000_detections": 15.022960926699824
+        }
+      },
+      {
+        "tau": 0.99,
+        "unnecessary_isolation": {
+          "numerator": 9,
+          "denominator": 1174,
+          "rate": 0.007666098807495741
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 761319,
+          "denominator": 786231,
+          "rate": 0.9683146556164791
+        },
+        "approvals_added": {
+          "total": 25523,
+          "of_which_real_attacks": 24912,
+          "of_which_false_alarms": 611,
+          "per_1000_detections": 16.222331686078846
+        }
+      },
+      {
+        "tau": 0.999,
+        "unnecessary_isolation": {
+          "numerator": 0,
+          "denominator": 1174,
+          "rate": 0.0
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 262855,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 757416,
+          "denominator": 786231,
+          "rate": 0.9633504657028278
+        },
+        "approvals_added": {
+          "total": 29435,
+          "of_which_real_attacks": 28815,
+          "of_which_false_alarms": 620,
+          "per_1000_detections": 18.708785533821683
+        }
+      }
+    ],
+    [
+      {
+        "tau": 0.6,
+        "unnecessary_isolation": {
+          "numerator": 599,
+          "denominator": 1174,
+          "rate": 0.510221465076661
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 786775,
+          "denominator": 786775,
+          "rate": 1.0
+        },
+        "approvals_added": {
+          "total": 0,
+          "of_which_real_attacks": 0,
+          "of_which_false_alarms": 0,
+          "per_1000_detections": 0.0
+        }
+      },
+      {
+        "tau": 0.7,
+        "unnecessary_isolation": {
+          "numerator": 435,
+          "denominator": 1174,
+          "rate": 0.37052810902896083
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 785570,
+          "denominator": 786775,
+          "rate": 0.9984684312541705
+        },
+        "approvals_added": {
+          "total": 1369,
+          "of_which_real_attacks": 1205,
+          "of_which_false_alarms": 164,
+          "per_1000_detections": 0.8701317273926239
+        }
+      },
+      {
+        "tau": 0.8,
+        "unnecessary_isolation": {
+          "numerator": 278,
+          "denominator": 1174,
+          "rate": 0.23679727427597955
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 783728,
+          "denominator": 786775,
+          "rate": 0.9961272282418735
+        },
+        "approvals_added": {
+          "total": 3368,
+          "of_which_real_attacks": 3047,
+          "of_which_false_alarms": 321,
+          "per_1000_detections": 2.140689304498435
+        }
+      },
+      {
+        "tau": 0.9,
+        "unnecessary_isolation": {
+          "numerator": 163,
+          "denominator": 1174,
+          "rate": 0.13884156729131175
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 764478,
+          "denominator": 786775,
+          "rate": 0.9716602586508214
+        },
+        "approvals_added": {
+          "total": 22733,
+          "of_which_real_attacks": 22297,
+          "of_which_false_alarms": 436,
+          "per_1000_detections": 14.449017208777589
+        }
+      },
+      {
+        "tau": 0.95,
+        "unnecessary_isolation": {
+          "numerator": 44,
+          "denominator": 1174,
+          "rate": 0.03747870528109029
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 763709,
+          "denominator": 786775,
+          "rate": 0.9706828508785866
+        },
+        "approvals_added": {
+          "total": 23621,
+          "of_which_real_attacks": 23066,
+          "of_which_false_alarms": 555,
+          "per_1000_detections": 15.01342697789713
+        }
+      },
+      {
+        "tau": 0.99,
+        "unnecessary_isolation": {
+          "numerator": 8,
+          "denominator": 1174,
+          "rate": 0.0068143100511073255
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 761773,
+          "denominator": 786775,
+          "rate": 0.9682221727940008
+        },
+        "approvals_added": {
+          "total": 25593,
+          "of_which_real_attacks": 25002,
+          "of_which_false_alarms": 591,
+          "per_1000_detections": 16.26682344715809
+        }
+      },
+      {
+        "tau": 0.999,
+        "unnecessary_isolation": {
+          "numerator": 0,
+          "denominator": 1174,
+          "rate": 0.0
+        },
+        "unsafe_autonomous_action": {
+          "numerator": 0,
+          "denominator": 261250,
+          "rate": 0.0
+        },
+        "real_attack_autonomous_retention": {
+          "numerator": 757970,
+          "denominator": 786775,
+          "rate": 0.9633885164119348
+        },
+        "approvals_added": {
+          "total": 29404,
+          "of_which_real_attacks": 28805,
+          "of_which_false_alarms": 599,
+          "per_1000_detections": 18.689082039629447
+        }
+      }
+    ]
+  ],
+  "summary": [
+    {
+      "tau": 0.6,
+      "unnecessary_isolation": {
+        "mean": 0.5047700170357752,
+        "min": 0.489778534923339,
+        "max": 0.5281090289608177
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 1.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "approvals_per_1000": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      }
+    },
+    {
+      "tau": 0.7,
+      "unnecessary_isolation": {
+        "mean": 0.36218057921635427,
+        "min": 0.3526405451448041,
+        "max": 0.3807495741056218
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 0.9984844540744167,
+        "min": 0.9984684312541705,
+        "max": 0.9984994337846497
+      },
+      "approvals_per_1000": {
+        "mean": 0.8636486422067915,
+        "min": 0.851063829787234,
+        "max": 0.8701317273926239
+      }
+    },
+    {
+      "tau": 0.8,
+      "unnecessary_isolation": {
+        "mean": 0.2286201022146508,
+        "min": 0.21635434412265758,
+        "max": 0.23850085178875638
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 0.9961262812379861,
+        "min": 0.9961041983844443,
+        "max": 0.9961517737380531
+      },
+      "approvals_per_1000": {
+        "mean": 2.1415791397200197,
+        "min": 2.1190790205456596,
+        "max": 2.1629351850380565
+      }
+    },
+    {
+      "tau": 0.9,
+      "unnecessary_isolation": {
+        "mean": 0.1299829642248722,
+        "min": 0.12265758091993186,
+        "max": 0.13884156729131175
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 0.9716818327937847,
+        "min": 0.971587894702692,
+        "max": 0.9718280794408416
+      },
+      "approvals_per_1000": {
+        "mean": 14.428932356633243,
+        "min": 14.32952505045048,
+        "max": 14.468720702969826
+      }
+    },
+    {
+      "tau": 0.95,
+      "unnecessary_isolation": {
+        "mean": 0.0323679727427598,
+        "min": 0.024701873935264053,
+        "max": 0.03747870528109029
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 0.9706753571213035,
+        "min": 0.9705675423630699,
+        "max": 0.9708128406686564
+      },
+      "approvals_per_1000": {
+        "mean": 15.004655744998649,
+        "min": 14.90918913765433,
+        "max": 15.043300017478906
+      }
+    },
+    {
+      "tau": 0.99,
+      "unnecessary_isolation": {
+        "mean": 0.006473594548551958,
+        "min": 0.004258943781942078,
+        "max": 0.007666098807495741
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 0.9682785102060439,
+        "min": 0.9681833275445514,
+        "max": 0.9683938464046917
+      },
+      "approvals_per_1000": {
+        "mean": 16.22156897017463,
+        "min": 16.132712567333513,
+        "max": 16.26682344715809
+      }
+    },
+    {
+      "tau": 0.999,
+      "unnecessary_isolation": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "unsafe_autonomous_action": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "real_attack_autonomous_retention": {
+        "mean": 0.9633983420776489,
+        "min": 0.9633175425347156,
+        "max": 0.9635991679373074
+      },
+      "approvals_per_1000": {
+        "mean": 18.664802250011917,
+        "min": 18.528276103157324,
+        "max": 18.715141499690148
+      }
+    }
+  ]
+}

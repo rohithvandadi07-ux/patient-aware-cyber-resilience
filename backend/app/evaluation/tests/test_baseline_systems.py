@@ -1,6 +1,7 @@
 import pytest
 
 from app.evaluation.baseline_systems import (
+    CONFIDENCE_GATE_RULE_ID,
     AblationName,
     DetectionOutcome,
     DeviceContext,
@@ -10,6 +11,7 @@ from app.evaluation.baseline_systems import (
     decide_detection_plus_risk_engine,
     decide_fixed_response,
     decide_full_system,
+    decide_full_system_confidence_gated,
     decide_full_system_variant,
     detection_outcome_from_row,
     is_high_stakes,
@@ -370,3 +372,55 @@ class TestRecoveryResultWouldRequireReinvestigation:
         decision = decide_fixed_response(detection, context)
         assert decision.executed_action == ResponseActionCategory.SHUTDOWN
         assert recovery_result_would_require_reinvestigation(detection, context, decision) is False
+
+
+# --- experiment-only confidence gate ----------------------------------------
+
+_LOW_STAKES = DeviceContext(device_criticality=DeviceCriticality.LOW, patient_dependency=False)
+_HIGH_STAKES = DeviceContext(device_criticality=DeviceCriticality.HIGH, patient_dependency=True)
+
+
+def _gated(detection, context, threshold):
+    return decide_full_system_confidence_gated(
+        detection,
+        context,
+        "T-gate",
+        risk_model=RuleBasedRiskModel(),
+        policy_engine=PolicyEngine(),
+        min_autonomous_confidence=threshold,
+    )
+
+
+def _plain(detection, context):
+    return decide_full_system(
+        detection, context, "T-gate", risk_model=RuleBasedRiskModel(), policy_engine=PolicyEngine()
+    )
+
+
+def test_gate_sends_a_low_confidence_autonomous_action_to_approval():
+    detection = _false_positive(confidence=0.7)
+    assert _plain(detection, _LOW_STAKES).executed_action is not None  # would have acted alone
+    gated = _gated(detection, _LOW_STAKES, 0.9)
+    assert gated.executed_action is None
+    assert gated.requires_human_approval is True
+    assert gated.policy_rule_id == CONFIDENCE_GATE_RULE_ID
+
+
+def test_gate_leaves_a_confident_detection_untouched():
+    detection = _attack(confidence=0.99)
+    assert _gated(detection, _LOW_STAKES, 0.9) == _plain(detection, _LOW_STAKES)
+
+
+def test_gate_never_makes_a_decision_less_safe_than_full_system():
+    for context in (_LOW_STAKES, _HIGH_STAKES):
+        for detection in (_attack(0.65), _attack(0.99), _false_positive(0.65), _true_negative()):
+            plain = _plain(detection, context)
+            gated = _gated(detection, context, 0.95)
+            if plain.executed_action is None:
+                assert gated.executed_action is None  # gate cannot add an action
+            assert not is_unsafe_autonomous_action(gated)
+
+
+def test_gate_at_the_detection_threshold_is_a_no_op():
+    for detection in (_attack(0.65), _false_positive(0.65)):
+        assert _gated(detection, _LOW_STAKES, 0.6) == _plain(detection, _LOW_STAKES)
