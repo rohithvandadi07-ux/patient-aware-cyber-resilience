@@ -61,3 +61,11 @@ implemented component — never stubbed with placeholder numbers.
   synthetic stand-in, this run has real benign false positives, so the
   `unnecessary_isolation_rate` inputs now exist; the Phase 13 harness has not yet
   been re-run on this data.
+- `real_data_comparison.md` / `.json` — the Phase 13 five-system / six-ablation
+  patient-safety comparison re-run on the real CICIoMT2024 detector: every row of
+  the official test split (1,614,182) is a trial, repeated over 5 device-context
+  seeds. `full_system` took 0 unsafe autonomous actions in every seed (about 263k
+  high-stakes trials each) against 99.7% for `fixed_response`; the real detector's
+  false positives also make `unnecessary_isolation_rate` measurable for the first
+  time (about 50% for `full_system`). Run:
+  `cd backend && python -m app.evaluation.run_real_data_comparison --data-dir <iomt folder>`.

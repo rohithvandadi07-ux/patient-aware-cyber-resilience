@@ -287,6 +287,15 @@ bullet below are the honest account of what that excludes.
   split (1,614,182 rows). Results and caveats: `evaluation/ciciomt2024_results.md`.
   These models use the dataset's 45 flow features, so they are **not** the
   models the runtime detection service loads (15-feature proxy schema).
+- **Patient-safety comparison on the real detector.**
+  `backend/app/evaluation/run_real_data_comparison.py` re-runs the five-system /
+  six-ablation comparison with the real XGBoost detector over all 1,614,182 test
+  rows and 5 device-context seeds (`evaluation/real_data_comparison.md`).
+  `full_system` took 0 unsafe autonomous actions on high-stakes trials in every
+  seed versus 99.7% for the fixed-response baseline; it still autonomously
+  isolates a device on roughly half of the detector's benign false positives, a
+  limitation reported rather than hidden. The clinical device context and the
+  three LLM-backed agents remain disclosed stand-ins.
 - **Still not built, by deliberate and disclosed decision, not oversight:**
   the TimescaleDB-hypertable half of the Postgres migration
   (`NetworkEventStore`/`TelemetryStore`); rate limiting; an actual
