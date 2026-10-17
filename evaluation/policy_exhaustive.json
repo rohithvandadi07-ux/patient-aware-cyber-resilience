@@ -1,0 +1,90 @@
+{
+ "generated_at": "2026-10-17T01:43:46.600174+00:00",
+ "combinations": 3168,
+ "autonomous": 1872,
+ "human": 1296,
+ "actions": [
+  "block_traffic",
+  "revoke_session",
+  "rotate_credentials",
+  "restrict_communication",
+  "isolate_non_critical",
+  "isolate_critical",
+  "quarantine_segment",
+  "activate_backup",
+  "restart_service",
+  "failover",
+  "shutdown"
+ ],
+ "by_action": {
+  "block_traffic": {
+   "auto": 144,
+   "human": 144
+  },
+  "revoke_session": {
+   "auto": 240,
+   "human": 48
+  },
+  "rotate_credentials": {
+   "auto": 240,
+   "human": 48
+  },
+  "restrict_communication": {
+   "auto": 144,
+   "human": 144
+  },
+  "isolate_non_critical": {
+   "auto": 144,
+   "human": 144
+  },
+  "isolate_critical": {
+   "auto": 144,
+   "human": 144
+  },
+  "quarantine_segment": {
+   "auto": 144,
+   "human": 144
+  },
+  "activate_backup": {
+   "auto": 240,
+   "human": 48
+  },
+  "restart_service": {
+   "auto": 144,
+   "human": 144
+  },
+  "failover": {
+   "auto": 144,
+   "human": 144
+  },
+  "shutdown": {
+   "auto": 144,
+   "human": 144
+  }
+ },
+ "by_context": {
+  "low|independent": {
+   "auto": 528
+  },
+  "low|dependent": {
+   "human": 384,
+   "auto": 144
+  },
+  "medium|independent": {
+   "auto": 528
+  },
+  "medium|dependent": {
+   "human": 384,
+   "auto": 144
+  },
+  "high|independent": {
+   "auto": 528
+  },
+  "high|dependent": {
+   "human": 528
+  }
+ },
+ "violations_P_A_severe_on_patient_dependent": 0,
+ "violations_P_B_any_action_on_high_dependent": 0,
+ "P_C_decision_independent_of_severity_and_confidence": true
+}

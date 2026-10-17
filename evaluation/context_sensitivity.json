@@ -1,0 +1,599 @@
+{
+ "generated_at": "2026-10-17T01:46:34.191137+00:00",
+ "results": [
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 0.0,
+    "p_dep": 0.0,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 0,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 0.1,
+    "p_dep": 0.1,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 3799,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 3786,
+     "unsafe_den": 3799,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 3786,
+     "unsafe_den": 3799,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 3799,
+     "unnec_num": 1075,
+     "unnec_den": 1174,
+     "autonomy": 0.9001734128494692,
+     "awaiting": 0.09982658715053082
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 3799,
+     "unnec_num": 1075,
+     "unnec_den": 1174,
+     "autonomy": 0.9001734128494692,
+     "awaiting": 0.09982658715053082
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 22,
+     "unsafe_den": 3799,
+     "unnec_num": 1129,
+     "unnec_den": 1174,
+     "autonomy": 0.9011885124561181,
+     "awaiting": 0.09881148754388192
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 0.25,
+    "p_dep": 0.25,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 9616,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 9585,
+     "unsafe_den": 9616,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 9585,
+     "unsafe_den": 9616,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 9616,
+     "unnec_num": 905,
+     "unnec_den": 1174,
+     "autonomy": 0.7496256820200482,
+     "awaiting": 0.2503743179799518
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 9616,
+     "unnec_num": 905,
+     "unnec_den": 1174,
+     "autonomy": 0.7496256820200482,
+     "awaiting": 0.2503743179799518
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 66,
+     "unsafe_den": 9616,
+     "unnec_num": 1059,
+     "unnec_den": 1174,
+     "autonomy": 0.752374910121389,
+     "awaiting": 0.247625089878611
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 0.5,
+    "p_dep": 0.5,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 19295,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 19246,
+     "unsafe_den": 19295,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 19246,
+     "unsafe_den": 19295,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 19295,
+     "unnec_num": 611,
+     "unnec_den": 1174,
+     "autonomy": 0.5012392674364505,
+     "awaiting": 0.49876073256354947
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 19295,
+     "unnec_num": 611,
+     "unnec_den": 1174,
+     "autonomy": 0.5012392674364505,
+     "awaiting": 0.49876073256354947
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 132,
+     "unsafe_den": 19295,
+     "unnec_num": 946,
+     "unnec_den": 1174,
+     "autonomy": 0.507101467664848,
+     "awaiting": 0.4928985323351521
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 0.75,
+    "p_dep": 0.75,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 29164,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 29088,
+     "unsafe_den": 29164,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 29088,
+     "unsafe_den": 29164,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 29164,
+     "unnec_num": 283,
+     "unnec_den": 1174,
+     "autonomy": 0.24963837076513132,
+     "awaiting": 0.7503616292348687
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 29164,
+     "unnec_num": 283,
+     "unnec_den": 1174,
+     "autonomy": 0.24963837076513132,
+     "awaiting": 0.7503616292348687
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 184,
+     "unsafe_den": 29164,
+     "unnec_num": 823,
+     "unnec_den": 1174,
+     "autonomy": 0.25879118555174896,
+     "awaiting": 0.741208814448251
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 0.9,
+    "p_dep": 0.9,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 35181,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 35090,
+     "unsafe_den": 35181,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 35090,
+     "unsafe_den": 35181,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 35181,
+     "unnec_num": 130,
+     "unnec_den": 1174,
+     "autonomy": 0.09913293575265407,
+     "awaiting": 0.900867064247346
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 35181,
+     "unnec_num": 130,
+     "unnec_den": 1174,
+     "autonomy": 0.09913293575265407,
+     "awaiting": 0.900867064247346
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 222,
+     "unsafe_den": 35181,
+     "unnec_num": 765,
+     "unnec_den": 1174,
+     "autonomy": 0.11000296070718606,
+     "awaiting": 0.8899970392928139
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "patient_dependent_share",
+    "value": 1.0,
+    "p_dep": 1.0,
+    "p_high": null
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 39142,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 39043,
+     "unsafe_den": 39142,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 39043,
+     "unsafe_den": 39142,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 39142,
+     "unnec_num": 0,
+     "unnec_den": 1174,
+     "autonomy": 0.0,
+     "awaiting": 1.0
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 39142,
+     "unnec_num": 0,
+     "unnec_den": 1174,
+     "autonomy": 0.0,
+     "awaiting": 1.0
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 246,
+     "unsafe_den": 39142,
+     "unnec_num": 718,
+     "unnec_den": 1174,
+     "autonomy": 0.012206572769953052,
+     "awaiting": 0.9877934272300469
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "high_criticality_share",
+    "value": 0.0,
+    "p_dep": 0.5,
+    "p_high": 0.0
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 0,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 601,
+     "unnec_den": 1174,
+     "autonomy": 0.49962356722920104,
+     "awaiting": 0.500376432770799
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 601,
+     "unnec_den": 1174,
+     "autonomy": 0.49962356722920104,
+     "awaiting": 0.500376432770799
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 0,
+     "unsafe_den": 0,
+     "unnec_num": 955,
+     "unnec_den": 1174,
+     "autonomy": 0.505663409888762,
+     "awaiting": 0.494336590111238
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "high_criticality_share",
+    "value": 0.3333333333333333,
+    "p_dep": 0.5,
+    "p_high": 0.3333333333333333
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 19595,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 19554,
+     "unsafe_den": 19595,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 19554,
+     "unsafe_den": 19595,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 19595,
+     "unnec_num": 586,
+     "unnec_den": 1174,
+     "autonomy": 0.49957281224886857,
+     "awaiting": 0.5004271877511314
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 19595,
+     "unnec_num": 586,
+     "unnec_den": 1174,
+     "autonomy": 0.49957281224886857,
+     "awaiting": 0.5004271877511314
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 115,
+     "unsafe_den": 19595,
+     "unnec_num": 965,
+     "unnec_den": 1174,
+     "autonomy": 0.5057733790128156,
+     "awaiting": 0.4942266209871844
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "high_criticality_share",
+    "value": 0.6,
+    "p_dep": 0.5,
+    "p_high": 0.6
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 35192,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 35091,
+     "unsafe_den": 35192,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 35091,
+     "unsafe_den": 35192,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 35192,
+     "unnec_num": 595,
+     "unnec_den": 1174,
+     "autonomy": 0.49952205726853616,
+     "awaiting": 0.5004779427314638
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 35192,
+     "unnec_num": 595,
+     "unnec_den": 1174,
+     "autonomy": 0.49952205726853616,
+     "awaiting": 0.5004779427314638
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 214,
+     "unsafe_den": 35192,
+     "unnec_num": 955,
+     "unnec_den": 1174,
+     "autonomy": 0.5055618999280971,
+     "awaiting": 0.49443810007190286
+    }
+   }
+  },
+  {
+   "setting": {
+    "axis": "high_criticality_share",
+    "value": 1.0,
+    "p_dep": 0.5,
+    "p_high": 1.0
+   },
+   "trials": 121174,
+   "fired": 118215,
+   "false_positives": 1174,
+   "high_stakes_real_attack_trials": 58621,
+   "systems": {
+    "fixed_response": {
+     "unsafe_num": 58451,
+     "unsafe_den": 58621,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_risk_engine": {
+     "unsafe_num": 58451,
+     "unsafe_den": 58621,
+     "unnec_num": 1174,
+     "unnec_den": 1174,
+     "autonomy": 1.0,
+     "awaiting": 0.0
+    },
+    "detection_plus_agentic_ai": {
+     "unsafe_num": 0,
+     "unsafe_den": 58621,
+     "unnec_num": 582,
+     "unnec_den": 1174,
+     "autonomy": 0.5005456160385738,
+     "awaiting": 0.4994543839614262
+    },
+    "full_system": {
+     "unsafe_num": 0,
+     "unsafe_den": 58621,
+     "unnec_num": 582,
+     "unnec_den": 1174,
+     "autonomy": 0.5005456160385738,
+     "awaiting": 0.4994543839614262
+    },
+    "without_response_impact_assessment": {
+     "unsafe_num": 355,
+     "unsafe_den": 58621,
+     "unnec_num": 932,
+     "unnec_den": 1174,
+     "autonomy": 0.5065093262276361,
+     "awaiting": 0.4934906737723639
+    }
+   }
+  }
+ ]
+}
