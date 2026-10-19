@@ -27,6 +27,48 @@ it is one closed-loop platform combining:
 - **A healthcare SOC dashboard** — making the full incident lifecycle, and the
   patient-aware decision at its center, visible and explainable
 
+## Quick start (product v2)
+
+Needs Docker with Compose. Ollama is optional (it runs the agents on a local model).
+
+```bash
+cp .env.example .env            # then edit: see the comments in the file
+docker compose up -d --build    # db + backend + frontend
+open http://localhost:5173      # the SOC console
+```
+
+Everything below is opt-in through `COMPOSE_FILE` in `.env` (chain the overlays you want):
+
+| Overlay | What it adds |
+|---|---|
+| `docker-compose.ollama.yml` | Agents use a local Ollama model instead of the mock LLM. `ollama pull qwen2.5:3b`, and Ollama must listen on `0.0.0.0` so the container can reach it. A 3B model on CPU takes minutes per investigation. |
+| `docker-compose.signing.yml` | Signed approvals: set `APPROVER_PUBLIC_KEYS` and `REQUIRE_SIGNED_APPROVALS=true`. Approvers sign with an Ed25519 key (the console's *Approver key* panel, or `scripts/sign_approval.py`). |
+| `docker-compose.demo.yml` | `DEMO_MODE=true` enables `POST /demo/reset` and the console's **Demo** page. Never enable it on a real deployment. |
+
+**Try it.** With demo mode on, open **Demo**, reset, then launch a scenario: a Suricata alert on the
+infusion pump, a Wazuh alert on the ventilator, or a pending approval you can approve (and, with signing
+required, sign in the browser). Scenario alerts go through the real ingestion, policy and audit paths.
+Scripted walkthroughs for the same flows are in `scripts/`.
+
+**What v2 adds on top of the paper:** alert ingestion from external detectors (`POST /ingest/alerts`:
+Suricata EVE, Wazuh, generic webhook); patient acuity (NEWS2) in the risk and policy decisions; response
+actions that change modelled device state (revoke session, rotate credentials, activate backup, failover)
+with precondition checks; Ed25519-signed approvals verified server-side; a local-LLM backend; and demo mode.
+
+**Honest limits.** Response actions change *modelled* device state, not real infrastructure. Patients are
+synthetic and NEWS2 acuity is a model input, not clinical validation. The default ledger is a mock Fabric
+client (the real network is brought up separately, see `blockchain/network/`). The real-flow detector
+(`POST /detections/score-flows`) returns 503 until you train its model artifact
+(`python -m app.cybersecurity.train_ciciomt2024`, which needs the CICIoMT2024 data). The demo does not
+need it. Signatures are verified at the API and carried in the audit payload; they are not yet stored
+on-chain. Demo reset clears the platform database and mock ledger, never a real Fabric ledger.
+
+**Checks.** `./scripts/run_checks.sh` runs backend lint and tests and the frontend lint, tests and build.
+CI runs the same on every push (`.github/workflows/ci.yml`).
+
+The **Status** section below is the paper-phase build log. Where it says no live LLM backend exists or that
+Docker was never run, later work supersedes it; the section above is current.
+
 ## Status
 
 This project was built in 16 phases (0–15); all 15 build phases are complete

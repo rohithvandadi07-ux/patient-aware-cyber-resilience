@@ -121,4 +121,59 @@ describe('Overview', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to load overview data/i)
   })
+
+  function tileText(label: string): string {
+    let el: HTMLElement | null = screen.getByText(label)
+    for (let i = 0; i < 3 && el; i++) {
+      if (/\d/.test(el.textContent ?? '')) return el.textContent ?? ''
+      el = el.parentElement
+    }
+    return ''
+  }
+
+  it('counts an incident whose policy decision is waiting for a human as awaiting approval', async () => {
+    mockFetchByPath({
+      '/incidents': [{ ...incident, status: 'detected' }],
+      '/devices': [device],
+      '/agents': [],
+      '/responses/proposed': [
+        {
+          incident_id: 'INC-1',
+          chosen_action: 'rotate_credentials',
+          requires_human_approval: true,
+          policy_rule_id: 'approval_required',
+          rationale: 'scripted',
+          alternatives: [],
+        },
+      ],
+    })
+
+    renderWithProviders()
+
+    await screen.findByRole('link', { name: 'INC-1' })
+    expect(tileText('Awaiting approval')).toContain('1')
+  })
+
+  it('does not count a decision that does not need a human', async () => {
+    mockFetchByPath({
+      '/incidents': [{ ...incident, status: 'detected' }],
+      '/devices': [device],
+      '/agents': [],
+      '/responses/proposed': [
+        {
+          incident_id: 'INC-1',
+          chosen_action: 'monitor',
+          requires_human_approval: false,
+          policy_rule_id: 'autonomous',
+          rationale: 'scripted',
+          alternatives: [],
+        },
+      ],
+    })
+
+    renderWithProviders()
+
+    await screen.findByRole('link', { name: 'INC-1' })
+    expect(tileText('Awaiting approval')).toContain('0')
+  })
 })

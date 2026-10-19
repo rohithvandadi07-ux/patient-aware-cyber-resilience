@@ -8,8 +8,7 @@ interpretation, `recommended_action` is a recommendation, never an instruction t
 act.
 """
 
-from pydantic import BaseModel, Field
-from pydantic import model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.enums import AttackCategory, DeviceCriticality, ImpactLevel, ResponseActionCategory
 from app.schemas.patient import AcuityBand

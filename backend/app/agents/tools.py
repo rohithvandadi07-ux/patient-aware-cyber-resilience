@@ -30,6 +30,7 @@ exposed now so that evidence is genuinely queryable rather than just
 asserted to exist, not because it is already wired end to end.
 """
 
+from app.iomt_simulator.patients import PatientRegistry
 from app.iomt_simulator.registry import DeviceRegistry
 from app.policy_engine.engine import PolicyEngine
 from app.repositories.agent_traces import AgentTraceRecorder
@@ -42,11 +43,10 @@ from app.schemas.device import DeviceState
 from app.schemas.enums import ResponseActionCategory
 from app.schemas.events import NetworkEvent
 from app.schemas.incident import Incident
+from app.schemas.patient import PatientState
 from app.schemas.policy import PolicyDecision
 from app.schemas.risk import RiskScore
 from app.schemas.telemetry import TelemetryReading
-from app.iomt_simulator.patients import PatientRegistry
-from app.schemas.patient import PatientState
 
 
 class AgentToolkit:

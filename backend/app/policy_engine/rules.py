@@ -42,8 +42,8 @@ implementation that scored this case differently would still be caught.
 
 from app.schemas.agents import ClinicalContext
 from app.schemas.enums import ImpactLevel, ResponseActionCategory
-from app.schemas.risk import RiskScore
 from app.schemas.patient import AcuityBand
+from app.schemas.risk import RiskScore
 
 _IMPACT_ORDER: dict[ImpactLevel, int] = {
     ImpactLevel.LOW: 0,

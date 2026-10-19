@@ -17,18 +17,10 @@
 # because Phase 8 already decided it and because this sandbox cannot
 # containerize it at all.
 #
-# Disclosure that applies to every service below, not just the Fabric
-# question: nothing in this file has been build- or run-verified in this
-# project's development sandbox, because that same registry block means no
-# base image anywhere in this compose file (`timescale/timescaledb`,
-# `python:3.12-slim`, `node:22-alpine`, `nginx:1.27-alpine`) can actually be
-# pulled here. This is written and reviewed against the real Dockerfiles,
-# the real `requirements.txt`/`package.json`, and `docker compose config`'s
-# syntax validation (which needs no image pull and passes) -- not against an
-# actual `docker compose up`. Verify it for real in an environment with
-# registry access before treating this gate as more than "written and
-# config-validated." See README.md's "Docker" section for the same
-# disclosure in context.
+# Status: `docker compose build` and `docker compose up` have since been run end to end on a
+# machine with registry access (db, backend and frontend healthy; the Ollama, signing and demo
+# overlays exercised live). The registry-block remarks above describe the sandbox this file was
+# first written in, not its current status.
 
 services:
   db:
@@ -73,6 +65,9 @@ services:
       # above).
       REPOSITORY_BACKEND: postgres
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # 'ip=device_id,ip=device_id' -- lets Suricata/Wazuh alerts that name a device only by IP
+      # be matched to a registered device. Empty = alerts must carry a device_id or a known agent name.
+      DEVICE_IP_MAP: ${DEVICE_IP_MAP:-}
       # The dashboard's own browser origin, not the frontend container's
       # internal compose hostname -- CORS is enforced by the browser
       # against whatever origin the page was actually loaded from

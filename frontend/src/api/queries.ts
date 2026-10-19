@@ -30,6 +30,7 @@ export const queryKeys = {
   proposedResponse: (incidentId: string) => ['responses', 'proposed', incidentId] as const,
   executedResponses: (incidentId: string) => ['responses', 'executed', incidentId] as const,
   allExecutedResponses: ['responses', 'executed', 'all'] as const,
+  allProposedResponses: ['responses', 'proposed', 'all'] as const,
   recoveryResults: (incidentId: string) => ['recovery', incidentId] as const,
   allRecoveryResults: ['recovery', 'all'] as const,
   auditTrail: (incidentId: string) => ['blockchain', 'audit', incidentId] as const,
@@ -258,4 +259,8 @@ export function useDemoResetMutation() {
       queryClient.invalidateQueries()
     },
   })
+}
+
+export function useAllProposedResponses() {
+  return useQuery({ queryKey: queryKeys.allProposedResponses, queryFn: client.listProposedResponses })
 }

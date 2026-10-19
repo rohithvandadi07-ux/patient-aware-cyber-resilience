@@ -48,7 +48,9 @@ def test_sends_the_schema_and_returns_the_response(monkeypatch):
 def test_without_a_schema_uses_plain_json_mode(monkeypatch):
     seen = []
     monkeypatch.setattr(
-        urllib.request, "urlopen", lambda req, timeout=None: (seen.append(json.loads(req.data)), _Resp("{}"))[1]
+        urllib.request,
+        "urlopen",
+        lambda req, timeout=None: (seen.append(json.loads(req.data)), _Resp("{}"))[1],
     )
     OllamaLLMClient().generate("hi")
     assert seen[0]["format"] == "json"

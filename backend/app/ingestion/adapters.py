@@ -116,7 +116,9 @@ def parse_suricata_eve(record: Any) -> NormalizedAlert:
         raise AlertParseError(f"bad alert.severity {alert.get('severity')!r}") from exc
     timestamp = parse_timestamp(record.get("timestamp"))
     candidates = tuple(_s(record[k]) for k in ("dest_ip", "src_ip") if record.get(k))
-    reference = f"suricata:flow={record.get('flow_id', 'none')}:sid={alert.get('signature_id', 'none')}:{timestamp.isoformat()}"
+    flow_id = record.get("flow_id", "none")
+    signature_id = alert.get("signature_id", "none")
+    reference = f"suricata:flow={flow_id}:sid={signature_id}:{timestamp.isoformat()}"
     return NormalizedAlert(
         source="suricata_eve",
         candidates=candidates,

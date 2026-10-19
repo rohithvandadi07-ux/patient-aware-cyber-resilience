@@ -3,7 +3,8 @@ import pytest
 from app.iomt_simulator.device import ActionPreconditionError, Ventilator
 from app.response_engine.orchestrator import _apply_action
 from app.schemas.device import OperationalState
-from app.schemas.enums import DeviceCriticality, ResponseActionCategory as A
+from app.schemas.enums import DeviceCriticality
+from app.schemas.enums import ResponseActionCategory as A
 
 
 def _vent(**kw):

@@ -32,11 +32,12 @@ from app.api.dependencies import (
     get_proposed_response_repository,
     get_response_orchestrator,
 )
+from app.approvals.signing import ApprovalSignatureError, check_approval_signature
 from app.blockchain.hashing import hash_payload
 from app.blockchain.outbox import OutboxRepository, enqueue_approval, enqueue_decision, enqueue_response
-from app.approvals.signing import ApprovalSignatureError, check_approval_signature
 from app.core.auth import Principal, get_current_principal, require_role
 from app.core.config import Settings, get_settings
+from app.iomt_simulator.device import ActionPreconditionError
 from app.iomt_simulator.registry import DeviceNotFoundError
 from app.policy_engine.engine import PolicyEngine
 from app.repositories.incidents import IncidentNotFoundError
@@ -55,7 +56,6 @@ from app.schemas.blockchain import ApprovalProvenance, DecisionProvenance, Respo
 from app.schemas.policy import PolicyDecision
 from app.schemas.response import ApprovalRecord, ExecutedResponse
 from app.schemas.risk import RiskScore
-from app.iomt_simulator.device import ActionPreconditionError
 
 router = APIRouter(prefix="/responses", tags=["responses"])
 

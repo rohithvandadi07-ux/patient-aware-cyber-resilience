@@ -35,8 +35,10 @@ def test_suricata_scan_medium_severity():
 
 
 def test_suricata_mqtt_and_unknown():
-    assert parse_suricata_eve(suricata(signature="MQTT CONNECT flood", category="x")).attack_type.value == "mqtt_based"
-    assert parse_suricata_eve(suricata(signature="Something odd", category="Misc")).attack_type.value == "unknown"
+    mqtt = parse_suricata_eve(suricata(signature="MQTT CONNECT flood", category="x"))
+    assert mqtt.attack_type.value == "mqtt_based"
+    odd = parse_suricata_eve(suricata(signature="Something odd", category="Misc"))
+    assert odd.attack_type.value == "unknown"
 
 
 def test_suricata_non_alert_is_skipped_not_rejected_as_malformed():

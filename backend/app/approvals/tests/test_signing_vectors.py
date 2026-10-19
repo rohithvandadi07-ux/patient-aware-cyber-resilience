@@ -9,11 +9,11 @@ TS = datetime(2026, 10, 19, 10, 0, 0, 123000, tzinfo=UTC)
 PUBLIC_KEY = "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg="
 
 PLAIN_ID = "INC-ventilator-01-ab12cd34"
-PLAIN_MESSAGE = r'{"chosen_action":"rotate_credentials","decision":"approved","incident_id":"INC-ventilator-01-ab12cd34","policy_rule_id":"approval_high_impact","ts":"2026-10-19T10:00:00.123000Z","v":1}'
+PLAIN_MESSAGE = r'{"chosen_action":"rotate_credentials","decision":"approved","incident_id":"INC-ventilator-01-ab12cd34","policy_rule_id":"approval_high_impact","ts":"2026-10-19T10:00:00.123000Z","v":1}'  # noqa: E501 -- pinned golden vector, must stay byte-exact
 PLAIN_SIGNATURE = "wpTWVY1PVVem7mO40vu+Vnmy4TjwAO5DJFtrU5Ov8RjUnwN+DfvCfv0Zr3kCL8zIZqiLyX4DyOL7V/VIEwdrCA=="
 
 UNICODE_ID = "INC-\u00e9-\U0001F600-\x7f"
-UNICODE_MESSAGE = r'{"chosen_action":"rotate_credentials","decision":"approved","incident_id":"INC-\u00e9-\ud83d\ude00-\u007f","policy_rule_id":"approval_high_impact","ts":"2026-10-19T10:00:00.123000Z","v":1}'
+UNICODE_MESSAGE = r'{"chosen_action":"rotate_credentials","decision":"approved","incident_id":"INC-\u00e9-\ud83d\ude00-\u007f","policy_rule_id":"approval_high_impact","ts":"2026-10-19T10:00:00.123000Z","v":1}'  # noqa: E501 -- pinned golden vector, must stay byte-exact
 UNICODE_SIGNATURE = "BYf1jiXJT2NX7Wx6E1Tl39JQuRlekihf9OGTmfTGfHDFG8vvIJDJfGosU+LP/6drx8wbNmNvTXsAgxM72NytDw=="
 
 

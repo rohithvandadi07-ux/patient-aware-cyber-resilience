@@ -310,7 +310,9 @@ class Settings(BaseSettings):
                         continue
                     identity, sep, key = entry.partition("=")
                     if not sep or not identity.strip() or not key.strip():
-                        raise ValueError(f"APPROVER_PUBLIC_KEYS entry {entry[:40]!r} must be 'identity=base64key'")
+                        raise ValueError(
+                            f"APPROVER_PUBLIC_KEYS entry {entry[:40]!r} must be 'identity=base64key'"
+                        )
                     parsed[identity.strip()] = key.strip()
                 value = parsed
         if isinstance(value, dict):

@@ -20,7 +20,9 @@ def ip_map():
     app.dependency_overrides.pop(get_settings, None)
 
 
-def suricata(dest="10.0.1.20", signature="ET DOS SYN flood", category="Attempted Denial of Service", severity=1):
+def suricata(
+    dest="10.0.1.20", signature="ET DOS SYN flood", category="Attempted Denial of Service", severity=1
+):
     return {
         "timestamp": "2026-10-19T10:00:00.123456+0000", "event_type": "alert", "flow_id": 7,
         "src_ip": "10.0.0.9", "dest_ip": dest, "proto": "TCP",
@@ -53,7 +55,8 @@ def test_alert_becomes_evidence_the_agents_can_see():
 
 
 def test_suricata_batch_deduplicates_to_one_incident_per_device_and_type(ip_map):
-    r = post({"source": "suricata_eve", "alerts": [suricata(severity=2), suricata(severity=1), suricata(severity=3)]})
+    alerts = [suricata(severity=2), suricata(severity=1), suricata(severity=3)]
+    r = post({"source": "suricata_eve", "alerts": alerts})
     body = r.json()
     assert len(body["incident_ids"]) == 1
     assert {o["incident_id"] for o in body["outcomes"]} == {body["incident_ids"][0]}
@@ -91,7 +94,8 @@ def test_explicit_device_id_applies_and_unknown_is_404():
     ok = post({"source": "wazuh", "device_id": "ecg-monitor-01",
                "alerts": [{"rule": {"level": 8, "description": "port scan"}}]})
     assert ok.json()["outcomes"][0]["device_id"] == "ecg-monitor-01"
-    assert post({"source": "wazuh", "device_id": "nope", "alerts": [{"rule": {"level": 8}}]}).status_code == 404
+    missing = post({"source": "wazuh", "device_id": "nope", "alerts": [{"rule": {"level": 8}}]})
+    assert missing.status_code == 404
 
 
 def test_request_validation():

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useAllAgentTraces, useDevices, useIncidents } from '../api/queries'
+import { useAllAgentTraces, useAllProposedResponses, useDevices, useIncidents } from '../api/queries'
 import { latestThreatAssessmentsByIncident } from '../api/threatAssessments'
 import type { ImpactLevel, Incident, OperationalState } from '../api/types'
 import { HorizontalBarList, type BarRow } from '../components/HorizontalBarList'
@@ -60,16 +60,27 @@ export function Overview() {
   const incidentsQuery = useIncidents()
   const devicesQuery = useDevices()
   const agentTracesQuery = useAllAgentTraces()
+  const proposedQuery = useAllProposedResponses()
 
-  const isLoading = incidentsQuery.isLoading || devicesQuery.isLoading || agentTracesQuery.isLoading
-  const firstError = incidentsQuery.error ?? devicesQuery.error ?? agentTracesQuery.error
+  const isLoading =
+    incidentsQuery.isLoading || devicesQuery.isLoading || agentTracesQuery.isLoading || proposedQuery.isLoading
+  const firstError =
+    incidentsQuery.error ?? devicesQuery.error ?? agentTracesQuery.error ?? proposedQuery.error
 
   const incidents = incidentsQuery.data ?? []
   const devices = devicesQuery.data ?? []
   const severityByIncident = latestThreatAssessmentsByIncident(agentTracesQuery.data ?? [])
 
   const activeIncidents = incidents.filter((incident) => !RESOLVED_STATUSES.has(incident.status))
-  const awaitingApproval = incidents.filter((incident) => incident.status === 'awaiting_approval').length
+  // Awaiting a human: the incident says so, OR the Policy Engine has a decision that needs
+  // approval and nothing has executed it yet (a decision is removed once it executes). The
+  // second case covers incidents opened by ingestion or scripts, whose status stays 'detected'.
+  const pendingDecisionIds = new Set(
+    (proposedQuery.data ?? []).filter((d) => d.requires_human_approval).map((d) => d.incident_id),
+  )
+  const awaitingApproval = incidents.filter(
+    (incident) => incident.status === 'awaiting_approval' || pendingDecisionIds.has(incident.incident_id),
+  ).length
   const stalled = incidents.filter((incident) => incident.status.endsWith('_stalled')).length
 
   const severityCounts = new Map<ImpactLevel, number>()
