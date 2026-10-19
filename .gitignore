@@ -53,3 +53,6 @@ blockchain/chaincode/coverage/
 .idea/
 .vscode/
 *.swp
+
+datasets/demo/
+backend/experiments/

@@ -34,3 +34,5 @@ joblib==1.4.2
 # app/agents/llm_client.py's GeminiLLMClient docstring). Google's official
 # SDK for the Gemini API; pinned to the version installed and tested here.
 google-genai==2.30.0
+
+alembic==1.14.0
