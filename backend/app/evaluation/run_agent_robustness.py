@@ -513,7 +513,7 @@ def guards_disabled() -> Iterator[None]:
 
     with (
         mock.patch.object(
-            healthcare_context, "ground_clinical_context", lambda context, _device: (context, [])
+            healthcare_context, "ground_clinical_context", lambda context, _device, _patient=None: (context, [])
         ),
         mock.patch.object(recovery_verification, "ground_recovery_result", lambda result, _n: (result, [])),
         mock.patch.object(llm_client, "check_incident_id", lambda _output, _expected: None),

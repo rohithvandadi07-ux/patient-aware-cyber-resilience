@@ -43,6 +43,7 @@ implementation that scored this case differently would still be caught.
 from app.schemas.agents import ClinicalContext
 from app.schemas.enums import ImpactLevel, ResponseActionCategory
 from app.schemas.risk import RiskScore
+from app.schemas.patient import AcuityBand
 
 _IMPACT_ORDER: dict[ImpactLevel, int] = {
     ImpactLevel.LOW: 0,
@@ -77,12 +78,30 @@ RULE_APPROVAL_HIGH_IMPACT = "approval_high_impact"
 # uses, so the two are directly comparable.
 RULE_APPROVAL_LOW_DETECTOR_CONFIDENCE = "approval_low_detector_confidence"
 RULE_APPROVAL_UNKNOWN_DETECTOR_CONFIDENCE = "approval_unknown_detector_confidence"
+RULE_APPROVAL_HIGH_ACUITY_PATIENT = "approval_high_acuity_patient"
+
+# Disruptive actions (the severe and moderate tiers) that always need a human while the
+# connected patient is currently HIGH acuity. Non-disruptive actions (credential rotation,
+# session revocation, backup activation) are deliberately not in this set.
+_ACUITY_APPROVAL_ACTIONS = frozenset(
+    {
+        ResponseActionCategory.SHUTDOWN,
+        ResponseActionCategory.ISOLATE_CRITICAL,
+        ResponseActionCategory.QUARANTINE_SEGMENT,
+        ResponseActionCategory.FAILOVER,
+        ResponseActionCategory.ISOLATE_NON_CRITICAL,
+        ResponseActionCategory.RESTRICT_COMMUNICATION,
+        ResponseActionCategory.RESTART_SERVICE,
+        ResponseActionCategory.BLOCK_TRAFFIC,
+    }
+)
 
 
 def classify_routing(
     response_impact: ImpactLevel,
     patient_dependency: bool,
     action_category: ResponseActionCategory,
+    patient_acuity: AcuityBand | None = None,
 ) -> tuple[bool, str, str]:
     """Returns (requires_human_approval, policy_rule_id, rationale).
 
@@ -100,6 +119,22 @@ def classify_routing(
             f"Human approval required unconditionally: patient_dependency=true and "
             f"action={action_category.value} is in the Section 13 unconditional-approval "
             "set {shutdown, isolate_critical}, regardless of response_impact or cyber_risk.",
+        )
+
+    # Defense in depth, independent of how response_impact was scored: a disruptive action
+    # on a patient-dependent device whose patient is currently HIGH acuity (NEWS2-based)
+    # needs a human, even if the Risk Engine's acuity escalation did not apply.
+    if (
+        patient_acuity == AcuityBand.HIGH
+        and patient_dependency
+        and action_category in _ACUITY_APPROVAL_ACTIONS
+    ):
+        return (
+            True,
+            RULE_APPROVAL_HIGH_ACUITY_PATIENT,
+            f"Human approval required: the connected patient is currently HIGH acuity and "
+            f"action={action_category.value} is disruptive on a patient-dependent device, "
+            "regardless of response_impact or cyber_risk.",
         )
 
     impact_rank = _IMPACT_ORDER[response_impact]
@@ -167,7 +202,9 @@ def decide_routing(
     policy_rule_id, rationale) tuple as `classify_routing`.
     """
     response_impact = get_response_impact_for_action(risk_score, action_category)
-    return classify_routing(response_impact, context.patient_dependency, action_category)
+    return classify_routing(
+        response_impact, context.patient_dependency, action_category, context.patient_acuity
+    )
 
 
 def apply_confidence_gate(
