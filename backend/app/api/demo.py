@@ -69,6 +69,10 @@ def demo_reset(
     state.executed_response_repository.clear()
     state.recovery_result_repository.clear()
     state.outbox_repository.clear()
+    # The reset wiped the outbox (and the mock ledger), so queue the active policy's hash again.
+    from app.blockchain.policy_anchor import anchor_active_policy
+
+    anchor_active_policy(state.outbox_repository)
     state.network_event_store.clear()
     state.telemetry_store.clear()
 

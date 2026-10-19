@@ -29,6 +29,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(level=settings.log_level, json_output=settings.log_json)
 
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        # Runs under a real server only (not TestClient without `with`): queue the active
+        # routing policy's hash for the ledger so every policy change leaves a record.
+        from app.blockchain.policy_anchor import anchor_active_policy
+
+        anchor_active_policy(_app.state.outbox_repository)
+        yield
+
     app = FastAPI(
         title=settings.app_name,
         description=(
@@ -38,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ),
         version="0.1.0",
         debug=settings.debug,
+        lifespan=lifespan,
     )
 
     _register_middleware(app, settings)

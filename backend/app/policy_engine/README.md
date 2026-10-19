@@ -61,3 +61,11 @@ shutdown/isolate-critical or any high-impact action run without a human, is refu
 (there is no fallback). `POLICY_FILE=/path/site.yaml` selects a site policy. `GET /policy` shows
 the active rules and `policy_hash`; recompute it independently with
 `python -m app.policy_engine.table file.yaml`.
+
+### Anchoring the policy hash on the ledger
+
+At startup the backend queues the active policy's `policy_hash` as a `policy` outbox entry (once;
+it is queued again only if the previous attempt failed). `POST /blockchain/audit/process` commits
+it through `recordPolicy` like any other provenance record, and `GET /policy` reports
+`anchor.state` (`not_queued`, `pending`, `confirmed`, `failed`) with the transaction id. Changing
+the policy changes its hash, so the new hash is anchored on the next start.
