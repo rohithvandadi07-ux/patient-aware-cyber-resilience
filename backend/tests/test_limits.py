@@ -14,7 +14,7 @@ def _client(**overrides):
 def test_limits_are_off_by_default():
     client = _client()
     assert all(client.get("/devices").status_code == 200 for _ in range(30))
-    assert client.post("/detections/score-flows", json={"device_id": "d", "flows": []}).status_code == 422
+    assert client.post("/incidents", json={}).status_code == 422
 
 
 def test_rate_limit_returns_429_with_retry_after_and_exempts_health():
@@ -68,8 +68,8 @@ def test_rate_limit_window_resets_with_the_clock():
 
 def test_body_over_the_limit_is_rejected_with_413_but_small_bodies_pass():
     client = _client(max_request_body_bytes=2000)
-    big = {"device_id": "d", "flows": [{"x": 1.0}] * 400}
-    r = client.post("/detections/score-flows", json=big)
+    big = {"padding": "x" * 5000}
+    r = client.post("/incidents", json=big)
     assert r.status_code == 413 and "exceeds" in r.json()["detail"]
-    small = client.post("/detections/score-flows", json={"device_id": "d", "flows": []})
+    small = client.post("/incidents", json={})
     assert small.status_code == 422  # reached the app; rejected by validation, not by the limit

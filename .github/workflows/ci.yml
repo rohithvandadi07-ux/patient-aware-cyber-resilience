@@ -9,7 +9,7 @@ on:
 jobs:
   backend:
     name: Backend (lint + test)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -34,7 +34,7 @@ jobs:
 
   frontend:
     name: Frontend (lint + test + build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
@@ -62,7 +62,7 @@ jobs:
 
   e2e:
     name: E2E (Scenario A/B through the real UI)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
