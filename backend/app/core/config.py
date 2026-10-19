@@ -8,9 +8,10 @@ or a `.env` file in real deployments (see `.env.example` at the repo root).
 
 import json
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -45,7 +46,7 @@ class Settings(BaseSettings):
     # --- API ---
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000)
-    cors_allowed_origins: list[str] = Field(
+    cors_allowed_origins: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:5173", "http://127.0.0.1:5173"],
         description="Origins the SOC dashboard (Phase 10, Vite dev server default port 5173) may "
         "call this API from. Needed because the frontend and backend run as separate origins in "
@@ -70,7 +71,7 @@ class Settings(BaseSettings):
         "named 'anonymous (auth disabled)' -- the same permissive default this app has always had, "
         "just now named explicitly rather than having no concept of a principal at all.",
     )
-    api_keys: dict[str, tuple[str, str]] = Field(
+    api_keys: Annotated[dict[str, tuple[str, str]], NoDecode] = Field(
         default_factory=dict,
         description="API_KEY -> (role, identity) map. role is one of 'viewer' | 'operator' | "
         "'approver' (app/core/auth.py's _ROLE_RANK -- viewer can read, operator can trigger "
