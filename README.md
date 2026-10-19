@@ -344,11 +344,39 @@ bullet below are the honest account of what that excludes.
   `NetworkEventStore`/`TelemetryStore` (TimescaleDB hypertables when the
   extension exists, plain tables otherwise); and ranked response alternatives
   on `PolicyDecision`, shown in the dashboard's response panel.
+- **Blockchain, run and measured on a real network.** `blockchain/network/` brings
+  up Hyperledger Fabric 2.5.9 natively (two organisations, one Raft orderer, the
+  provenance chaincode) and `backend/app/evaluation/run_blockchain_evaluation.py`
+  measured it (`evaluation/blockchain_evaluation.md`): a write waits for commit and
+  takes about 1.1 s (the 1 s batch timeout dominates), a read about 90 ms, a full
+  incident lifecycle about 5.6 s, and throughput scales from 0.9 to 6.0 committed tx/s
+  as clients go from 1 to 8. Eight integrity checks pass on the live ledger
+  (write-once incidents, rejected unknown/invalid records, a one-organisation
+  endorsement invalidated, two simultaneous writers yielding exactly one commit). All
+  142 blocks were re-verified by an independent block-hash implementation; editing a
+  transaction on a copy is detected, including when the attacker recomputes the block's
+  own hash. All 188 transactions the client reported committed are VALID on the
+  ledger. The previously skipped Fabric integration tests now run and pass. The
+  evaluation also found and fixed a real client bug (a write reported success before
+  commit). Caveats: one machine, **one orderer (no fault tolerance)**, one run.
+- **Agents treated as untrusted components.** `backend/app/agents/grounding.py`
+  checks what the system can check about an LLM agent's output in code: the Healthcare
+  Context Agent's criticality and patient dependency against the device registry (and a
+  floor on clinical impact for HIGH + patient-dependent devices), the incident id on every
+  agent output, and a Recovery Verification claim against attack events that arrived after
+  the response. Fault injection (`backend/app/evaluation/run_agent_robustness.py`,
+  `evaluation/agent_robustness.md`) drives the real orchestrator with 10 scripted
+  misbehaviours on 3 devices: with the guards off, 2 unsafe autonomous actions on the
+  ventilator, 1 falsely closed incident and 3 wrong-incident answers got through; with
+  them on, 0, 0 and 0. These are scripted worst cases, not rates of real model
+  behaviour. A `--live` mode runs the same pipeline against Gemini, with and without
+  injected text, but needs your `GEMINI_API_KEY` and has not been run.
 - **Not verified, by deliberate and disclosed decision, not oversight:**
   an actual registry-access build/run verification of Phase 14's Docker setup
   (`docker compose up` could not be run where this was built: container
   registries were unreachable); a live Gemini call exercised end-to-end (the
-  wiring is real and tested offline; no `GEMINI_API_KEY` was available); the
+  wiring and the `--live` evaluation harness are real and tested with a stub client;
+  no `GEMINI_API_KEY` was available); the
   TimescaleDB hypertable branch against a real TimescaleDB server (only plain
   PostgreSQL is available to the tests; retention/compression policies are not
   configured); the new CI `frontend`/`e2e` jobs on GitHub's runners (the same

@@ -4,9 +4,9 @@
 %%  figures are TikZ/pgfplots with the measured data embedded, and the
 %%  bibliography is inline, so it compiles as one file (Overleaf: pdfLaTeX).
 %%
-%%  Search for "TODO" before submitting: corresponding author / e-mail, the
-%%  target journal's own template (change only the \documentclass line and the
-%%  frontmatter block), and the "VERIFY" notes on the related-work table.
+%%  Search for "TODO" before submitting: the target journal's own template
+%%  (change only the \documentclass line and the frontmatter block), and the
+%%  "VERIFY" notes on the related-work table.
 %% ==========================================================================
 \documentclass[preprint,12pt]{elsarticle}
 
@@ -45,13 +45,13 @@ Guarded LLM Incident Response with Blockchain Provenance}
 
 \author[aff1]{Rohith V}
 \author[aff1]{Prathiv R M}
-\author[aff1]{Manimaran S}
-% TODO: mark the corresponding author and add the e-mail address, e.g.
-%   \author[aff1]{Manimaran S\corref{cor1}}  \ead{...}  \cortext[cor1]{Corresponding author}
+\author[aff1]{Manimaran S\corref{cor1}}
+\ead{s_manimaran@cb.amrita.edu}
+\cortext[cor1]{Corresponding author}
 \address[aff1]{Amrita School of Artificial Intelligence, Coimbatore, Amrita Vishwa Vidyapeetham, India}
 
 \begin{abstract}
-Hospitals depend on networked medical devices, yet an automated cyber response can itself harm a patient: isolating an attacked ventilator stops breathing support. Existing Internet of Medical Things (IoMT) detectors end at classification, and language-model incident-response agents give no guarantee against wrong or manipulated output. We propose a four-phase, patient-aware cyber-resilience framework combining an XGBoost detector with calibrated confidence, five language-model agents treated as untrusted, deterministic grounding guards, rule-based risk and policy engines that require a human for severe actions on patient-dependent devices, and a Hyperledger Fabric ledger for tamper-evident provenance. On the full CICIoMT2024 test split (1,614,182 flows) the detector reaches 99.52\% accuracy. Across about 262,000 high-stakes attacks the full system executed no unsafe autonomous action, against 99.72\% for a fixed-response baseline, and an exhaustive check of 3,168 policy inputs found no violation. Injected agent faults caused two unsafe actions without the guards and none with them; the ledger detected every tested tampering.
+Hospitals depend on networked medical devices, yet an automated cyber response can itself harm a patient: isolating an attacked ventilator stops breathing support. Most Internet of Medical Things (IoMT) detectors end at classification, and language-model incident-response agents give no guarantee against wrong or manipulated output. We propose a four-phase, patient-aware cyber-resilience framework combining an XGBoost detector with calibrated confidence, five language-model agents treated as untrusted, deterministic grounding guards, rule-based risk and policy engines that require a human for severe actions on patient-dependent devices, and a Hyperledger Fabric ledger for tamper-evident provenance. On the full CICIoMT2024 test split (1,614,182 flows) the detector reaches 99.52\% accuracy. Across about 262,000 high-stakes attacks the full system executed no unsafe autonomous action, against 99.72\% for a fixed-response baseline, and an exhaustive check of 3,168 policy inputs found no violation. Injected agent faults caused two unsafe actions without the guards and none with them; the ledger detected every tested tampering.
 \end{abstract}
 
 \begin{keyword}
@@ -64,13 +64,13 @@ Internet of Medical Things \sep cyber-resilience \sep agentic AI \sep large lang
 \section{Introduction}
 \label{sec:intro}
 
-The Internet of Medical Things (IoMT) connects infusion pumps, patient monitors, ventilators and imaging equipment to hospital networks, and with that connectivity comes a large attack surface. Research on IoMT security has produced a large body of intrusion-detection work, which recent reviews organise by method, dataset and evaluation metric~\cite{naghib2025}. The CICIoMT2024 benchmark~\cite{dadkhah2024}, collected from a testbed of IoMT devices under attack over several protocols, has become a common test bed. Detectors built on it now report high accuracy: an enhanced long short-term memory network called L2D2 reaches 98\% over 19 classes~\cite{akar2025}, a reinforcement-learning hybrid reaches 0.9958 binary accuracy~\cite{shaikh2025}, and an interpretable XGBoost fusion reaches 0.97~\cite{hafid2025}.
+The Internet of Medical Things (IoMT) connects infusion pumps, patient monitors, ventilators and imaging equipment to hospital networks, and with that connectivity comes a large attack surface. Research on IoMT security has produced a large body of intrusion-detection work, which recent reviews organise by method, dataset and evaluation metric~\cite{naghib2025}. The CICIoMT2024 benchmark~\cite{dadkhah2024}, collected from a testbed of IoMT devices under attack over several protocols, has become a common test bed. Detectors built on it now report high accuracy: an enhanced long short-term memory network called L2D2 reaches 98\% over 19 classes~\cite{akar2025}, a reinforcement-learning hybrid reaches 0.9958 binary accuracy~\cite{shaikh2025}, and an interpretable XGBoost fusion reaches 0.97~\cite{hafid2025}. Other frameworks pursue privacy-preserving hierarchical federated learning~\cite{loganathan2025hfl} and a hybrid LSTM-CNN-GAN model that synthesises attack data to cover zero-day threats~\cite{loganathan2025gan}.
 
 The objective of this work is to move from \emph{detecting} an attack on a medical device to \emph{responding} to it safely. A response is safe only if it does not harm the patient who depends on the device, and it is useful only if it can be explained and audited afterwards.
 
-In a clinical network the most secure response is not always the safest one. A fixed playbook that isolates any device under attack will, on a ventilator, remove breathing support to stop a network flood. Language-model agents have recently been proposed to automate incident response~\cite{lin2025,gao2026}, but a model can be wrong, can be misled by text inside the traffic it reads, and can claim that a device has recovered while the attacker is still active. Blockchain has been proposed to protect health records and evidence~\cite{hasnain2023,pelekoudas2023}, yet it is rarely measured on a real ledger together with detection and response. The open problem is therefore: given IoMT traffic and a registry of device criticality, choose an automated response whose risk to a patient-dependent device is controlled \emph{by construction}, whatever an AI component says, and keep a tamper-evident record of every step.
+In a clinical network the most secure response is not always the safest one. A fixed playbook that isolates any device under attack will, on a ventilator, remove breathing support to stop a network flood. Language-model agents have recently been proposed to automate incident response~\cite{lin2025,gao2026}, and a governed agentic layer for healthcare security operations gates disruptive actions on asset criticality and clinical exceptions and asks for a second approver~\cite{kolluru2026}. That layer is built around a classifier and a playbook policy and reports detection metrics, so a measured rate of unsafe actions is not available. A language-model agent can be wrong, can be misled by text inside the traffic it reads, and can claim that a device has recovered while the attacker is still active. Blockchain has been proposed to protect health records and evidence~\cite{hasnain2023,pelekoudas2023}, to manage trust between devices~\cite{akkal2025}, to authenticate them~\cite{chaudhuri2026}, to share and validate IoMT data~\cite{ali2025,arul2024} and, together with machine learning, to secure data processing~\cite{khan2025}; a recent review collects the open challenges~\cite{uddin2025}. Yet it is rarely measured on a real ledger together with detection and response. The open problem is therefore: given IoMT traffic and a registry of device criticality, choose an automated response whose risk to a patient-dependent device is controlled \emph{by construction}, whatever an AI component says, and keep a tamper-evident record of every step.
 
-Closely related work from our own institution combines smart contracts with encryption for medical data sharing~\cite{vidhya2023} and builds a smart-contract blockchain for a healthcare IoT network~\cite{mukhopadhyay2021}, while cyber-physical work applies machine learning to attack classification and anomaly detection in power systems~\cite{pranav2026,vignes2025}. These share our concern with trustworthy automation in safety-critical infrastructure, but none of them gates an automated response on the clinical state of a device.
+Closely related work from our own institution combines smart contracts with encryption for medical data sharing~\cite{vidhya2023} builds a smart-contract blockchain for a healthcare IoT network~\cite{mukhopadhyay2021}, disseminates multi-modal healthcare data over a blockchain in IoMT~\cite{arul2024}, and integrates IoMT, machine learning and fog computing in a secure digital-twin framework~\cite{savant2025}, while cyber-physical work applies machine learning to attack classification and anomaly detection in power systems~\cite{pranav2026,vignes2025}. These share our concern with trustworthy automation in safety-critical infrastructure, but none of them gates an automated response on the clinical state of a device.
 
 This paper makes the following contributions.
 \begin{enumerate}
@@ -81,23 +81,27 @@ This paper makes the following contributions.
   \item A safety-focused evaluation with real experiments at several levels: all 1,614,182 official CICIoMT2024 test flows, five training seeds of six classifiers, bootstrap confidence intervals, an exhaustive enumeration of the decision rules, a sensitivity study of the clinical device mix, and a fault-injection study of the agentic layer with the guards on and off.
 \end{enumerate}
 
-The rest of the paper is organised as follows. Section~\ref{sec:lit} reviews sixteen related works and states the identified gaps. Section~\ref{sec:method} presents the proposed framework, its four phases and algorithms. Section~\ref{sec:results} gives the experimental setup, dataset and results. Section~\ref{sec:comparison} compares the framework with existing work. Section~\ref{sec:conclusion} concludes with directions for future research.
+The rest of the paper is organised as follows. Section~\ref{sec:lit} reviews twenty-six related works and states the identified gaps. Section~\ref{sec:method} presents the proposed framework, its four phases and algorithms. Section~\ref{sec:results} gives the experimental setup, dataset and results. Section~\ref{sec:comparison} compares the framework with existing work. Section~\ref{sec:conclusion} concludes with directions for future research.
 
 %% ==========================================================================
 \section{Literature review}
 \label{sec:lit}
 
-Table~\ref{tab:lit} summarises the sixteen works cited in this paper, grouped by topic: IoMT intrusion detection and datasets, blockchain for healthcare and forensic evidence, language-model agents for incident response, and machine learning for cyber-physical power systems. For each we state the algorithm, its advantage, and its drawback \emph{with respect to our objective of safe, auditable automated response}. The drawbacks are therefore not criticisms of the works' own aims.
+Table~\ref{tab:lit} summarises the twenty-six works cited in this paper, grouped by topic: IoMT intrusion detection, security frameworks and datasets; blockchain for healthcare and forensic evidence; agentic and language-model incident response; and machine learning for cyber-physical power systems. For each we state the algorithm, its advantage, and its drawback \emph{with respect to our objective of safe, auditable automated response}. The drawbacks are therefore not criticisms of the works' own aims.
 
 % VERIFY: the "Advantage" and "Drawback" cells were written from each paper's
-% abstract / title and the figures quoted there. For naghib2025, dadkhah2024,
+% abstract / title and the figures quoted there. The ten rows added later
+% (loganathan2025hfl, loganathan2025gan, savant2025, kolluru2026, akkal2025,
+% chaudhuri2026, ali2025, arul2024, khan2025, uddin2025) were written from the
+% supplied PDFs (abstract, introduction, conclusion and, for kolluru2026 and
+% chaudhuri2026, the results sections); re-read before submission. For naghib2025, dadkhah2024,
 % vidhya2023, mukhopadhyay2021, pranav2026 and vignes2025 only the title and
 % abstract snippets were available; re-read each full paper before submission
 % and adjust any drawback that its authors do address.
 \Needspace{14\baselineskip}
 \small
 \begin{longtable}{@{}C{0.8cm}L{3.6cm}L{3.6cm}L{4.2cm}@{}}
-\caption{Sixteen related works (2021--2026): algorithm, advantage and drawback relative to this work.}\label{tab:lit}\\
+\caption{Twenty-six related works (2021--2026): algorithm, advantage and drawback relative to this work.}\label{tab:lit}\\
 \toprule
 Ref. & Algorithm / approach & Advantage & Drawback \\
 \midrule
@@ -108,7 +112,7 @@ Ref. & Algorithm / approach & Advantage & Drawback \\
 \endhead
 \bottomrule
 \endfoot
-\multicolumn{4}{@{}l}{\textit{IoMT intrusion detection and datasets}}\\
+\multicolumn{4}{@{}l}{\textit{IoMT intrusion detection, security frameworks and datasets}}\\*
 \cite{naghib2025} & Systematic literature review of intrusion-detection systems for the IoMT. & Organises methods, datasets and metrics; identifies open challenges. & A survey: no system, and no link from detection to a safe response. \\
 \cite{dadkhah2024} & CICIoMT2024: multi-protocol attack dataset from 40 IoMT devices (WiFi, MQTT, Bluetooth). & Real device traffic; 18 attack types; official capture-level split. & Network flows only; no clinical information about the devices. \\
 \cite{akar2025} & Enhanced LSTM (L2D2) on CICIoMT2024, 19 classes. & 98\% accuracy on the real multi-class benchmark. & Detection only; no response, clinical context or provenance. \\
@@ -116,24 +120,34 @@ Ref. & Algorithm / approach & Advantage & Drawback \\
 \cite{hafid2025} & Tuned XGBoost with logistic-regression late fusion and SHAP; cost-aware. & Interpretable; fusion cut false negatives from 361 to 213. & Generic security cost; no patient impact; no automated response. \\
 \cite{alsolami2024} & Stacking, bagging and boosting of random forest and SVM on WUSTL-EHMS-2020. & 98.88\% accuracy with stacking; uses patient-biometric features. & One dataset, as the authors note; detection only. \\
 \cite{abdelhaq2026} & Soft-voting XGBoost and two SVMs with PCA features; validated on TON-IoT and CICIDS 2017. & 98.04\% accuracy; cross-dataset validation. & Detection only; no response or clinical gating. \\
-\multicolumn{4}{@{}l}{\textit{Blockchain for healthcare and evidence}}\\
+\cite{loganathan2025hfl} & Hierarchical federated learning: local deep-network training on edge devices, multi-tier aggregation. & Privacy-preserving training without sharing patient data; less data transmission; claimed resilience to data poisoning. & Detection only; no response, clinical gating or provenance. \\
+\cite{loganathan2025gan} & Hybrid LSTM-CNN-GAN: LSTM for physiological time series, CNN for images and malware, GAN-generated attacks. & Covers vital-sign streams, images and traffic; synthetic attacks for zero-day threats. & Detection only; no response, clinical gating or provenance. \\
+\cite{savant2025} & Secure digital-twin framework combining IoMT, machine learning and fog computing for patient monitoring. & Real-time monitoring and prediction; fog processing near the source; simulation of sensor networks. & Security is vulnerability detection and proactive measures; no response gated on device state; no provenance. \\
+\multicolumn{4}{@{}l}{\textit{Blockchain for healthcare and evidence}}\\*
 \cite{hasnain2023} & Systematic review of Hyperledger Fabric for health-record security (57 studies). & Collects the privacy, integrity and traceability benefits of Fabric. & A review: no implementation and no incident response. \\
 \cite{pelekoudas2023} & Prototype Hyperledger Fabric security architecture for IoMT health monitoring. & A real Fabric prototype aimed at IoMT. & Protects monitoring data, not an automated response decision. \\
 \cite{xiao2024} & Blockchain digital-forensics scheme for industrial IoT: smart contracts, token access control, batch consensus. & Tamper-proof, non-repudiable evidence chain; faster than DPoS in simulation. & Industrial setting, evaluated in simulation; no clinical safety notion. \\
 \cite{vidhya2023} & Smart contracts with an encryption scheme for privacy-aware medical data sharing. & Privacy-preserving sharing of medical data on a blockchain. & Data sharing, not incident response; no detector or device gating. \\
 \cite{mukhopadhyay2021} & Smart-contract-based blockchain for a healthcare IoT network. & Applies smart contracts directly to healthcare IoT. & Concerns data handling in the network; no attack detection or response policy. \\
-\multicolumn{4}{@{}l}{\textit{Language-model agents for incident response}}\\
+\cite{akkal2025} & BTMH: two-chain Hyperledger Fabric trust management, one chain for authentication and one for trust data. & Resists bad-mouthing, ballot stuffing and whitewashing; benchmarked on Fabric with Hyperledger Caliper. & Trust between devices, not incident handling; no detection, response or clinical gating. \\
+\cite{chaudhuri2026} & Blockchain-based three-party authentication and key agreement among IoMT devices, hospital server and cloud. & Formally verified protocol (Scyther); chaincode throughput and latency measured with Caliper. & Authentication and key agreement; no detector, response policy or incident evidence. \\
+\cite{ali2025} & Hyperledger Fabric with edge computing to unify fragmented IoMT data sources (pulse-oximeter use case). & Permissioned ledger for secure, auditable data sharing; edge processing to reduce latency. & Data integration; no attack detection or response. \\
+\cite{arul2024} & MMSDDF: blockchain-key framework for secure multi-modal patient-data dissemination in IoMT. & Authenticated access to patient data; reports 95.8\% accuracy and 0.48~s delay. & Results are from simulation; concerns data access, not incident response. \\
+\cite{khan2025} & BDLT-IoMT: SVM machine learning with a consortium blockchain for data integrity and secure processing. & Joins ML-based processing with blockchain integrity and resource optimisation. & Simulation-based results; ML serves data processing, not patient-impact-aware response. \\
+\cite{uddin2025} & Review of blockchain integration in IoMT: architectures, applications, scalability and cryptographic solutions. & A roadmap of integration challenges (standards, storage, performance trade-offs). & A review: no implementation and no incident response. \\
+\multicolumn{4}{@{}l}{\textit{Agentic and language-model incident response}}\\*
 \cite{lin2025} & IRCopilot: four cooperating LLM sessions that mirror incident-response phases (preprint). & Role split reduces context loss and hallucination. & No deterministic guard on model output; not medical; no clinical gating. \\
 \cite{gao2026} & Fine-tuned 14B LLM with perception, reasoning, planning and action, plus in-context adaptation (preprint). & Recovery up to 23\% faster than frontier models. & Optimises recovery time; patient harm not modelled; a five-action plan takes about 20 minutes on an A100. \\
-\multicolumn{4}{@{}l}{\textit{Machine learning for cyber-physical power systems}}\\
+\cite{kolluru2026} & MEDSEC-AGENT: governed layer turning model scores into SOAR actions; five detectors, BERT best. & Gates disruptive actions on asset criticality and clinical exceptions; two-person rule; audit trail; calibrated thresholds. & Reports detection metrics only (BERT 96.1\% accuracy); no measured unsafe-action rate; audit trail not on a tamper-evident ledger. \\
+\multicolumn{4}{@{}l}{\textit{Machine learning for cyber-physical power systems}}\\*
 \cite{pranav2026} & Man-in-the-middle attack modelling in a smart grid with machine-learning attack classification. & Shows ML classification of attacks on a physical process. & Power systems, not medical; classification without a safe response layer. \\
 \cite{vignes2025} & AI-driven cybersecurity framework for anomaly detection in power systems. & Anomaly detection for a safety-critical physical infrastructure. & Detection only; no response gating on the physical consequence. \\
 \end{longtable}
 \normalsize
 
-Two observations follow from this review. First, the blockchain studies~\cite{hasnain2023,pelekoudas2023,xiao2024,vidhya2023,mukhopadhyay2021} protect data, access or evidence, but none reports a ledger written by a detect-and-respond pipeline and measured for tamper detection and latency. Second, the cyber-physical studies~\cite{pranav2026,vignes2025} show that machine-learning detection is also central in power systems, where, as in a hospital, the physical process can be harmed by a naive automatic response. The detection papers~\cite{naghib2025,akar2025,shaikh2025,hafid2025,alsolami2024,abdelhaq2026} end at classification; the response papers~\cite{lin2025,gao2026} are not medical and are not guarded against wrong model output.
+Two observations follow from this review. First, the blockchain studies~\cite{hasnain2023,pelekoudas2023,xiao2024,vidhya2023,mukhopadhyay2021,akkal2025,chaudhuri2026,ali2025,arul2024,khan2025,uddin2025} protect data, access, trust or evidence, but none reports a ledger written by a detect-and-respond pipeline and measured for tamper detection and latency. Two of them do benchmark throughput and latency on a real Fabric network~\cite{akkal2025,chaudhuri2026}, as we do, but for authentication and trust data and not for incident evidence. Second, the cyber-physical studies~\cite{pranav2026,vignes2025} show that machine-learning detection is also central in power systems, where, as in a hospital, the physical process can be harmed by a naive automatic response. The detection papers~\cite{naghib2025,akar2025,shaikh2025,hafid2025,loganathan2025hfl,loganathan2025gan,savant2025,alsolami2024,abdelhaq2026} end at classification or monitoring. Of the response papers, the language-model ones~\cite{lin2025,gao2026} are not medical and are not guarded against wrong model output, while the medical one~\cite{kolluru2026} gates disruptive actions on clinical exceptions but is not built on language-model agents and reports no unsafe-action rate.
 
-The review leaves three gaps, which together form the problem statement of this paper. The first is that IoMT detectors end at classification and do not decide what to do to a device a patient depends on. The second is that language-model incident-response agents have no hard guarantee that a wrong, manipulated or malformed answer cannot trigger a harmful action. The third is that provenance for incident handling is described but seldom implemented and measured end to end on a real ledger. This work closes the three gaps together: it adds a patient-aware, deterministic decision layer after a real detector, treats the agents as untrusted, and records the whole incident on a real Fabric network.
+The review leaves three gaps, which together form the problem statement of this paper. The first is that most IoMT detectors end at classification and do not decide what to do to a device a patient depends on. The second is that language-model incident-response agents have no hard guarantee that a wrong, manipulated or malformed answer cannot trigger a harmful action. The third is that provenance for incident handling is described but seldom implemented and measured end to end on a real ledger. This work closes the three gaps together: it adds a patient-aware, deterministic decision layer after a real detector, treats the agents as untrusted, and records the whole incident on a real Fabric network.
 
 %% ==========================================================================
 \section{Proposed work}
@@ -1249,11 +1263,11 @@ On the quoted numbers our detector is on par with or above the others on accurac
 
 \subsection{Capability comparison}
 \label{sec:compare-cap}
-Table~\ref{tab:cap} compares what each system covers. This is where the proposed framework differs from the detection papers~\cite{akar2025,shaikh2025,hafid2025}, from the Fabric prototype for IoMT~\cite{pelekoudas2023}, from the forensic blockchain~\cite{xiao2024}, and from the language-model response agents~\cite{lin2025,gao2026}.
+Table~\ref{tab:cap} compares what each system covers. This is where the proposed framework differs from the detection papers~\cite{akar2025,shaikh2025,hafid2025}, from the Fabric prototype for IoMT~\cite{pelekoudas2023}, from the Fabric-based trust, authentication and data-integration systems~\cite{akkal2025,chaudhuri2026,ali2025}, from the forensic blockchain~\cite{xiao2024}, from the language-model response agents~\cite{lin2025,gao2026}, and from the governed healthcare response layer~\cite{kolluru2026}.
 
 \begin{table}[htbp]
 \centering
-\caption{Capabilities as described in each cited work's title and abstract. \checkmark{} = addressed; -- = not part of the stated scope (not a defect of that work); $\circ$ = partly, or in simulation only, or not verified from what we read.}
+\caption{Capabilities as described in each cited work's title and abstract (and, for MEDSEC-AGENT, its body). \checkmark{} = addressed; -- = not part of the stated scope (not a defect of that work); $\circ$ = partly, or in simulation only, or not verified from what we read.}
 \label{tab:cap}
 \footnotesize
 \begin{tabular}{@{}L{3.0cm}C{1.15cm}C{1.15cm}C{1.15cm}C{1.15cm}C{1.15cm}C{1.15cm}C{1.15cm}@{}}
@@ -1265,6 +1279,7 @@ HCLR-IDS~\cite{shaikh2025} & \checkmark & -- & -- & -- & -- & -- & -- \\
 Hafid et al.~\cite{hafid2025} & \checkmark & -- & -- & -- & -- & -- & -- \\
 Pelekoudas-Oikonomou et al.~\cite{pelekoudas2023} & -- & -- & -- & -- & -- & \checkmark & $\circ$ \\
 Xiao et al.~\cite{xiao2024} & -- & -- & -- & -- & -- & \checkmark & $\circ$ \\
+MEDSEC-AGENT~\cite{kolluru2026} & $\circ$ & \checkmark & \checkmark & $\circ$ & -- & -- & -- \\
 IRCopilot~\cite{lin2025} & -- & \checkmark & -- & \checkmark & -- & -- & -- \\
 Gao et al.~\cite{gao2026} & -- & \checkmark & -- & \checkmark & -- & -- & -- \\
 \textbf{This work} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
@@ -1272,11 +1287,11 @@ Gao et al.~\cite{gao2026} & -- & \checkmark & -- & \checkmark & -- & -- & -- \\
 \end{tabular}
 \end{table}
 
-No cited system combines all seven columns, but Table~\ref{tab:cap} is a statement about coverage, not performance: a more specialised work may do its one column better than we do. For example, IRCopilot is evaluated on a response benchmark that we do not use, and Gao et al.\ report recovery-time gains that our framework, which spends human time on purpose, does not aim for.
+No cited system combines all seven columns, but Table~\ref{tab:cap} is a statement about coverage, not performance: a more specialised work may do its one column better than we do. The closest in spirit is MEDSEC-AGENT~\cite{kolluru2026}, which also gates disruptive actions on clinical exceptions and asset criticality and asks for approval; its data are public security-telemetry corpora normalised to a healthcare schema and its agentic layer is a playbook policy, hence the partial marks, and the results we could read are detection metrics. Our framework adds guards against wrong agent output, a measured unsafe-action rate and a tested ledger. For example, IRCopilot is evaluated on a response benchmark that we do not use, and Gao et al.\ report recovery-time gains that our framework, which spends human time on purpose, does not aim for.
 
 \subsection{Safety and responsiveness against response baselines}
 \label{sec:compare-cost}
-No cited work reports an unsafe-autonomous-action rate, so there is no published number to quote for it. The baselines in Table~\ref{tab:cmpsafe} are therefore reference systems implemented in this work to stand for existing practice: a fixed playbook that isolates any attacked device, and a fully manual process (detection only). They are not re-implementations of a particular published system. The figures are those of Section~\ref{sec:safety}.
+No cited work reports an unsafe-autonomous-action rate, so there is no published number to quote for it; MEDSEC-AGENT~\cite{kolluru2026} lists failure-case analysis of unsafe recommendations among its evaluation elements, but the results we could read are detection metrics. The baselines in Table~\ref{tab:cmpsafe} are therefore reference systems implemented in this work to stand for existing practice: a fixed playbook that isolates any attacked device, and a fully manual process (detection only). They are not re-implementations of a particular published system. The figures are those of Section~\ref{sec:safety}.
 
 \begin{table}[htbp]
 \centering
@@ -1342,7 +1357,7 @@ This paper presented a patient-aware framework that turns detection of attacks o
 
 %% ==========================================================================
 \begin{thebibliography}{99}
-\small
+\small\raggedright
 \bibitem{naghib2025} A.~Naghib, F.~S. Gharehchopogh, A.~Zamanifar, A comprehensive and systematic literature review on intrusion detection systems in the internet of medical things: current status, challenges, and opportunities, Artificial Intelligence Review 58 (2025) 114. \href{https://doi.org/10.1007/s10462-024-11101-w}{doi:10.1007/s10462-024-11101-w}.
 
 \bibitem{dadkhah2024} S.~Dadkhah, E.~C.~P. Neto, R.~Ferreira, R.~C. Molokwu, S.~Sadeghi, A.~A. Ghorbani, CICIoMT2024: Attack vectors in healthcare devices -- a multi-protocol dataset for assessing IoMT device security, Internet of Things 28 (2024). (Elsevier PII S2542660524002920.) % TODO: add article number / DOI from the publisher page.
@@ -1353,17 +1368,37 @@ This paper presented a patient-aware framework that turns detection of attacks o
 
 \bibitem{hafid2025} A.~Hafid, M.~Rahouti, M.~Aledhari, Optimizing intrusion detection in IoMT networks through interpretable and cost-aware machine learning, Mathematics 13~(10) (2025) 1574. \href{https://doi.org/10.3390/math13101574}{doi:10.3390/math13101574}.
 
+\bibitem{loganathan2025hfl} S.~Loganathan, D.~Manivannan, An advanced hierarchical federated learning-based framework for IoMT cybersecurity threat detection, in: Proc. 8th International Conference on Computing Methodologies and Communication (ICCMC), IEEE, 2025. \href{https://doi.org/10.1109/ICCMC65190.2025.11140648}{doi:10.1109/ICCMC65190.2025.11140648}.
+
+\bibitem{loganathan2025gan} S.~Loganathan, J.~R.~F. Raj, R.~S. Krishnan, A.~A. Blessie, V.~V. Kumar, S.~Kavitha, An AI-driven cybersecurity framework for the Internet of Medical Things: a hybrid LSTM-CNN-GAN approach, in: Proc. International Conference on Machine Learning and Autonomous Systems (ICMLAS), IEEE, 2025. \href{https://doi.org/10.1109/ICMLAS64557.2025.10967601}{doi:10.1109/ICMLAS64557.2025.10967601}.
+
 \bibitem{lin2025} X.~Lin, J.~Zhang, G.~Deng, T.~Liu, T.~Zhang, Q.~Guo, R.~Chen, IRCopilot: Automated incident response with large language models, arXiv:2505.20945 (2025), preprint.
 
 \bibitem{gao2026} Y.~Gao, K.~Hammar, T.~Li, In-context autonomous network incident response: An end-to-end large language model agent approach, arXiv:2602.13156 (2026), preprint.
+
+\bibitem{kolluru2026} V.~Kolluru, S.~Maiti, T.~Murugesane, N.~Dasari, S.~Mungara, S.~Seshagani, Agentic AI for healthcare cybersecurity: autonomous threat detection and ethical implementation challenges, in: Proc. Innovations in Machine, Engineering, and Digital Conference (IMED), IEEE, 2026. \href{https://doi.org/10.1109/IMED68921.2026.11484331}{doi:10.1109/IMED68921.2026.11484331}.
 
 \bibitem{hasnain2023} M.~Hasnain, F.~R. Albogamy, S.~S. Alamri, I.~Ghani, B.~Mehboob, The Hyperledger Fabric as a blockchain framework preserves the security of electronic health records, Frontiers in Public Health 11 (2023) 1272787. \href{https://doi.org/10.3389/fpubh.2023.1272787}{doi:10.3389/fpubh.2023.1272787}.
 
 \bibitem{pelekoudas2023} F.~Pelekoudas-Oikonomou, J.~C. Ribeiro, G.~Mantas, G.~Sakellari, J.~Gonzalez, Prototyping a Hyperledger Fabric-based security architecture for IoMT-based health monitoring systems, Future Internet 15~(9) (2023) 308. \href{https://doi.org/10.3390/fi15090308}{doi:10.3390/fi15090308}.
 
+\bibitem{akkal2025} M.~Akkal, S.~Cherbal, B.~Annane, H.~Lakhlef, BTMH: A blockchain-powered trust management system for IoMT in healthcare, Computer Networks 271 (2025) 111589. \href{https://doi.org/10.1016/j.comnet.2025.111589}{doi:10.1016/j.comnet.2025.111589}.
+
+\bibitem{chaudhuri2026} A.~Chaudhuri, S.~Tripathi, D.~Sur, Blockchain-based authentication and key agreement scheme for securing IoMT device network, Blockchain: Research and Applications 7 (2026) 100349. \href{https://doi.org/10.1016/j.bcra.2025.100349}{doi:10.1016/j.bcra.2025.100349}.
+
+\bibitem{ali2025} A.~S.~M. Ali, S.~Ali, K.~Ziaullah, M.-I. Joo, H.-C. Kim, IoMT and blockchain synergy: a novel approach to health data validation and storage, IEEE Access 13 (2025) 57753--57766. \href{https://doi.org/10.1109/ACCESS.2025.3555289}{doi:10.1109/ACCESS.2025.3555289}.
+
+\bibitem{arul2024} R.~Arul, Y.~D. Al-Otaibi, W.~S. Alnumay, U.~Tariq, U.~Shoaib, M.~D.~J. Piran, Multi-modal secure healthcare data dissemination framework using blockchain in IoMT, Personal and Ubiquitous Computing 28 (2024) 3--15. \href{https://doi.org/10.1007/s00779-021-01527-2}{doi:10.1007/s00779-021-01527-2}.
+
+\bibitem{khan2025} A.~A. Khan, A.~A. Laghari, A.~M. Baqasah, R.~Bacarra, R.~Alroobaea, M.~Alsafyani, J.~A.~J. Alsayaydeh, BDLT-IoMT---a novel architecture: SVM machine learning for robust and secure data processing in Internet of Medical Things with blockchain cybersecurity, The Journal of Supercomputing 81 (2025) 271. \href{https://doi.org/10.1007/s11227-024-06782-7}{doi:10.1007/s11227-024-06782-7}.
+
+\bibitem{uddin2025} M.~B. Uddin, Md.~Hossain, T.~Mahmud, S.~Das, Blockchain integration in IoMT for secure healthcare: challenges, integration, and solutions, in: Proc. 6th International Conference on Inventive Research in Computing Applications (ICIRCA), IEEE, 2025. \href{https://doi.org/10.1109/ICIRCA65293.2025.11089683}{doi:10.1109/ICIRCA65293.2025.11089683}.
+
 \bibitem{vidhya2023} S.~Vidhya, V.~Kalaivani, A blockchain based secure and privacy aware medical data sharing using smart contract and encryption scheme, Peer-to-Peer Networking and Applications (2023). \href{https://doi.org/10.1007/s12083-023-01449-1}{doi:10.1007/s12083-023-01449-1}. % TODO: add volume/pages
 
 \bibitem{mukhopadhyay2021} A.~Mukhopadhyay, R.~Vinayaka, A smart-contract-based blockchain for a healthcare IoT network, International Journal of Electronic Healthcare (2021). \href{https://doi.org/10.1504/IJEH.2021.117122}{doi:10.1504/IJEH.2021.117122}. % TODO: add volume/pages
+
+\bibitem{savant2025} R.~V. Savant, S.~Navin Sundar, S.~Mishra, S.~Seshadri, M.~Supriya, A secure digital twin healthcare framework for precision medicine: integrating IoMT, ML and fog computing, in: Proc. International Conference on Emerging Smart Computing and Informatics (ESCI), IEEE, 2025. \href{https://doi.org/10.1109/ESCI63694.2025.10988319}{doi:10.1109/ESCI63694.2025.10988319}.
 
 \bibitem{pranav2026} M.~M. Pranav, S.~Rithan, R.~D.~A. Raj, A.~Pallakonda, R.~M.~R. Yanamala, K.~Prakasha~K., Smart grid cybersecurity against power system MiTM threats and machine learning-based attack classification, Energy Reports (2026). \href{https://doi.org/10.1016/j.egyr.2025.12.035}{doi:10.1016/j.egyr.2025.12.035}. % TODO: add volume/article number
 

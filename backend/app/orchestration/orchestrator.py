@@ -94,7 +94,7 @@ from app.agents.base import AgentStalledError
 from app.agents.healthcare_context import assess_clinical_context
 from app.agents.investigation import investigate
 from app.agents.llm_client import LLMClient
-from app.agents.recovery_verification import verify_recovery
+from app.agents.recovery_verification import count_attack_events, verify_recovery
 from app.agents.response_planning import plan_response
 from app.agents.threat_reasoning import assess_threat
 from app.agents.tools import AgentToolkit
@@ -327,6 +327,9 @@ class IncidentOrchestrator:
         history.append(f"response_execution: ok (action_taken={executed.action_taken.value})")
 
         self._incident_repository.update_status(incident_id, IncidentStatus.RECOVERY_VERIFYING)
+        # Snapshot now, so the verification step can tell attack events that arrived
+        # after the response from those that triggered it.
+        attack_events_at_execution = count_attack_events(self._toolkit, device_id)
         response_id = f"{incident_id}-response-{reinvestigation_count + 1}"
         try:
             with self._timings.stage("recovery_verification"):
@@ -336,6 +339,7 @@ class IncidentOrchestrator:
                     incident_id=incident_id,
                     response_id=response_id,
                     device_id=device_id,
+                    attack_events_at_execution=attack_events_at_execution,
                 )
         except AgentStalledError as exc:
             history.append(f"stalled: {exc}")

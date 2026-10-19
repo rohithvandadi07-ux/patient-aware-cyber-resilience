@@ -48,3 +48,25 @@ Known gaps carried forward on purpose, not fabricated around:
   actually makes a live call; without a key, `_register_state` falls back
   to mock with a logged warning rather than constructing a client that
   would fail on its first use.
+
+**Agents as untrusted components (`grounding.py`).** An agent's output is a claim made
+by a component that can be wrong or manipulated, so what can be checked against the
+system's own records is checked in code rather than only requested in the prompt:
+
+- `ground_clinical_context`: the Healthcare Context Agent's `device_criticality` and
+  `patient_dependency` are replaced with the device registry's values, and
+  `clinical_impact_level` is floored at HIGH for a HIGH-criticality, patient-dependent
+  device. The Policy Engine's hard rule reads these fields from the agent's output, so
+  without this an agent could switch that rule off.
+- `ground_recovery_result`: a Recovery Verification result claiming containment is
+  overridden to "not verified, re-investigate" if attack-labelled network events arrived
+  after the response executed (the orchestrator snapshots the count at execution time).
+- `check_incident_id`: an output about a different incident is a validation failure,
+  retried once and then a stall, like a schema failure.
+
+Corrections are logged at WARNING and recorded in the agent trace, with both the corrected
+output and the agent's original one, so a manipulated agent is visible. Not grounded: the
+Threat Reasoning Agent's attack type and severity, and the planner's choice among candidate
+actions; those stay LLM judgement, and the deterministic Risk and Policy engines decide
+what may be done with them. Evidence that this matters:
+`evaluation/agent_robustness.md`.

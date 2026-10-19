@@ -20,6 +20,7 @@ average across devices, since neither is a real measurement.
 import json
 
 from app.agents.base import run_agent_call
+from app.agents.grounding import ground_clinical_context
 from app.agents.llm_client import LLMClient
 from app.agents.tools import AgentToolkit
 from app.schemas.agents import ClinicalContext
@@ -73,6 +74,7 @@ def assess_clinical_context(
 
     device_states = [toolkit.get_device_state(device_id) for device_id in affected_devices]
     prompt = _build_prompt(incident_id, device_states)
+    primary = _most_clinically_significant(device_states)
     return run_agent_call(
         client=client,
         toolkit=toolkit,
@@ -82,4 +84,8 @@ def assess_clinical_context(
         output_schema=ClinicalContext,
         input_payload={"incident_id": incident_id, "affected_devices": affected_devices},
         stall_status=IncidentStatus.CONTEXT_STALLED,
+        # The prompt asks the model to copy criticality / patient dependency from
+        # the registry; this enforces it, because the Policy Engine's hard rule
+        # reads these two fields from this output.
+        ground=lambda context: ground_clinical_context(context, primary),
     )

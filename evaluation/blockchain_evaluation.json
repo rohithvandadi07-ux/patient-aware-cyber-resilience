@@ -1,0 +1,224 @@
+{
+  "generated_at": "2026-10-16T18:34:03.362759+00:00",
+  "environment": {
+    "fabric_peer": "v2.5.9",
+    "cpus": 2
+  },
+  "run_id": "183403",
+  "cli_floor": {
+    "n": 20.0,
+    "p50_ms": 65.05648100005601,
+    "p95_ms": 188.44590844987582,
+    "max_ms": 238.73228599995855,
+    "mean_ms": 78.07111874999464
+  },
+  "integrity": [
+    {
+      "check": "duplicate incident id is rejected (write-once record)",
+      "passed": true,
+      "detail": "ponse: status:500 message:\"incident 'EVAL-I-183403' already has a recordIncident entry -- the initial incident record cannot be overwritten\""
+    },
+    {
+      "check": "decision for an unknown incident is rejected",
+      "passed": true,
+      "detail": "ident 'EVAL-NEVER-RECORDED' has no recordIncident entry -- call recordIncident before recording a decision, approval, response, or recovery\""
+    },
+    {
+      "check": "invalid response-action category is rejected",
+      "passed": true,
+      "detail": "n, isolate_non_critical, isolate_critical, quarantine_segment, activate_backup, restart_service, failover, shutdown], got 'launch_missiles'\""
+    },
+    {
+      "check": "verify_evidence accepts the recorded evidence hash",
+      "passed": true,
+      "detail": "sha256 e2f817ebb91b2cf1... found on ledger"
+    },
+    {
+      "check": "verify_evidence rejects evidence altered by one field",
+      "passed": true,
+      "detail": "sha256 dc6f20f559df66bf... not on ledger"
+    },
+    {
+      "check": "Hospital and SecurityOps peers return the same answer",
+      "passed": true,
+      "detail": "hospital='true' securityops='true'"
+    },
+    {
+      "check": "two simultaneous writers of one incident id: exactly one is reported committed, and only that record is on the ledger",
+      "passed": true,
+      "detail": "reported committed: ['A']; on ledger: A=True, B=False"
+    },
+    {
+      "check": "a transaction endorsed by one organisation only is invalidated (MAJORITY policy)",
+      "passed": true,
+      "detail": "status ENDORSEMENT_POLICY_FAILURE, no state written"
+    }
+  ],
+  "writes": {
+    "write_latency": {
+      "n": 40.0,
+      "p50_ms": 1114.0726625001207,
+      "p95_ms": 1139.099332000137,
+      "max_ms": 1147.2397489997093,
+      "mean_ms": 1117.336999200063
+    },
+    "commit_to_queryable": {
+      "n": 20.0,
+      "p50_ms": 86.66976050017183,
+      "p95_ms": 111.51298180000141,
+      "max_ms": 127.37598300009267,
+      "mean_ms": 89.48465709995617
+    },
+    "transient_retries": 0
+  },
+  "reads": {
+    "n": 40.0,
+    "p50_ms": 88.93991300010384,
+    "p95_ms": 108.10567205028292,
+    "max_ms": 114.82401900002515,
+    "mean_ms": 91.26653942496432
+  },
+  "lifecycle": {
+    "lifecycle_total": {
+      "n": 10.0,
+      "p50_ms": 5577.631948000317,
+      "p95_ms": 5609.866663049911,
+      "max_ms": 5616.57256799981,
+      "mean_ms": 5576.130524200062
+    },
+    "per_step": {
+      "incident": {
+        "n": 10.0,
+        "p50_ms": 1111.756387000014,
+        "p95_ms": 1131.3959253999883,
+        "max_ms": 1133.52530200018,
+        "mean_ms": 1115.4970642000535
+      },
+      "decision": {
+        "n": 10.0,
+        "p50_ms": 1121.2411199999224,
+        "p95_ms": 1130.7726586001536,
+        "max_ms": 1130.8510990002105,
+        "mean_ms": 1118.199028800018
+      },
+      "approval": {
+        "n": 10.0,
+        "p50_ms": 1115.3811624999435,
+        "p95_ms": 1128.3269618000304,
+        "max_ms": 1132.3229419999734,
+        "mean_ms": 1115.6422274000306
+      },
+      "response": {
+        "n": 10.0,
+        "p50_ms": 1115.032465500235,
+        "p95_ms": 1133.9086393000343,
+        "max_ms": 1134.2609919997813,
+        "mean_ms": 1116.7776962000517
+      },
+      "recovery": {
+        "n": 10.0,
+        "p50_ms": 1110.8171805001348,
+        "p95_ms": 1125.9322396500465,
+        "max_ms": 1127.1963270000924,
+        "mean_ms": 1110.0031607000346
+      }
+    },
+    "transient_retries": 0
+  },
+  "concurrency": [
+    {
+      "concurrency": 1,
+      "submitted": 24,
+      "committed": 24,
+      "failed": 0,
+      "wall_s": 26.708654143999865,
+      "committed_tx_per_s": 0.8985851503637682,
+      "latency": {
+        "n": 24.0,
+        "p50_ms": 1111.001059499813,
+        "p95_ms": 1128.4815005502878,
+        "max_ms": 1136.1669830002938,
+        "mean_ms": 1112.8318810833473
+      },
+      "failure_samples": []
+    },
+    {
+      "concurrency": 2,
+      "submitted": 24,
+      "committed": 24,
+      "failed": 0,
+      "wall_s": 13.514745553000012,
+      "committed_tx_per_s": 1.775838095203536,
+      "latency": {
+        "n": 24.0,
+        "p50_ms": 1124.1024839998772,
+        "p95_ms": 1144.7562687998925,
+        "max_ms": 1146.2127419999888,
+        "mean_ms": 1126.0597324999442
+      },
+      "failure_samples": []
+    },
+    {
+      "concurrency": 4,
+      "submitted": 24,
+      "committed": 24,
+      "failed": 0,
+      "wall_s": 7.153147053999874,
+      "committed_tx_per_s": 3.3551665887505777,
+      "latency": {
+        "n": 24.0,
+        "p50_ms": 1192.923303500038,
+        "p95_ms": 1236.8580510000584,
+        "max_ms": 1237.682445000246,
+        "mean_ms": 1191.4995137916737
+      },
+      "failure_samples": []
+    },
+    {
+      "concurrency": 8,
+      "submitted": 24,
+      "committed": 24,
+      "failed": 0,
+      "wall_s": 4.008013905000098,
+      "committed_tx_per_s": 5.98800317784811,
+      "latency": {
+        "n": 24.0,
+        "p50_ms": 1321.4039569998022,
+        "p95_ms": 1373.3585076500276,
+        "max_ms": 1379.2983759999515,
+        "mean_ms": 1330.3553645416173
+      },
+      "failure_samples": []
+    }
+  ],
+  "ledger_tamper": {
+    "blocks": 142,
+    "transactions": 194,
+    "genuine_chain": {
+      "ok": true,
+      "blocks": 142
+    },
+    "tamper_target_block": 70,
+    "accounting": {
+      "client_reported_committed": 188,
+      "reported_and_valid_on_ledger": 188,
+      "reported_but_missing_from_ledger": 0,
+      "reported_but_invalid_on_ledger": 0,
+      "ledger_validation_outcomes": {
+        "VALID": 192,
+        "MVCC_READ_CONFLICT": 1,
+        "ENDORSEMENT_POLICY_FAILURE": 1
+      }
+    },
+    "edit_one_byte_of_a_transaction": {
+      "ok": false,
+      "block": 70,
+      "reason": "data hash does not match the block's transactions"
+    },
+    "edit_and_recompute_that_blocks_data_hash": {
+      "ok": false,
+      "block": 71,
+      "reason": "previous_hash does not match the prior block's header"
+    }
+  }
+}

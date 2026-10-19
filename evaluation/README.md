@@ -93,6 +93,20 @@ implemented component — never stubbed with placeholder numbers.
   optimistic for Benign/ARP, one seed, sampled device contexts). Run:
   `cd backend && python -m app.evaluation.run_calibrated_gating --data-dir <iomt folder>`
   (about 22 minutes on 2 CPUs).
+- `blockchain_evaluation.md` / `.json` — the provenance layer on a real Hyperledger
+  Fabric network: commit-inclusive write latency, read latency, full incident
+  lifecycle, throughput under 1–8 concurrent clients, eight integrity checks, an
+  independent re-verification of the whole block chain with tamper detection on a copy,
+  and an accounting of every transaction the client reported committed against the
+  ledger's own validation flags. One machine, one orderer, one run. Reproduce:
+  `cd backend && python -m app.evaluation.run_blockchain_evaluation` (needs the Fabric
+  binaries; see `blockchain/network/README.md`).
+- `agent_robustness.md` / `.json` — the five agents under a scripted, misbehaving LLM,
+  through the real orchestrator and the deterministic Risk/Policy engines: 10
+  misbehaviours × 3 devices, run with the grounding guards off and on. Reproduce:
+  `cd backend && python -m app.evaluation.run_agent_robustness`. With
+  `GEMINI_API_KEY` set, `--live --repeats N` also runs a real model, with and without
+  prompt-injected network events, and writes `agent_live_evaluation.json` (not run here).
 - `resilience_metrics.md` / `.json` — measured latency of the decision path and the
   detector, detection delay in flows per attack capture (rows have no timestamps),
   and a modelled containment delay for the five systems that depends on an assumed

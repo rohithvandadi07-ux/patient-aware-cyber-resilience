@@ -148,10 +148,10 @@ class Settings(BaseSettings):
         ".env.example. Empty by default; llm_backend='gemini' with this unset falls back to mock.",
     )
     gemini_model: str = Field(
-        default="gemini-2.0-flash",
-        description="Gemini model name passed to GeminiLLMClient. gemini-2.0-flash is Google's "
-        "fast/cheap tier, adequate for this project's structured-JSON agent outputs; override via "
-        "GEMINI_MODEL for a different tier.",
+        default="gemini-3.8-flash",
+        description="Gemini model name passed to GeminiLLMClient. Google has retired "
+        "gemini-2.0-flash (the API answers 404 and names gemini-3.8-flash as its replacement); "
+        "override via GEMINI_MODEL if that model is retired in turn.",
     )
 
     # --- Request limits (post-Phase-15, opt-in) ---

@@ -217,3 +217,45 @@ async def test_full_outbox_lifecycle_against_the_real_network(client):
 
     assert await _wait_until_verified(client, "hash-evidence-lifecycle") is True
     assert await _wait_until_verified(client, "hash-residual-lifecycle") is True
+
+
+async def test_an_immediate_duplicate_incident_is_rejected_because_writes_wait_for_commit(client):
+    """Regression for a defect the blockchain evaluation found: `invoke.sh` used
+    to return as soon as a transaction was endorsed, before it was committed, so
+    a duplicate recordIncident sent straight after the first was reported as
+    accepted. With `--waitForEvent` the first write has been committed on both
+    peers when it returns, so the write-once rule rejects the second one."""
+    from app.blockchain.fabric_client import FabricInvocationError
+
+    await client.record_incident("INT-TEST-DUP", "dev-1", "ddos", "hash-dup-first", TS)
+    with pytest.raises(FabricInvocationError):
+        await client.record_incident("INT-TEST-DUP", "dev-1", "ddos", "hash-dup-second", TS)
+    assert await _wait_until_verified(client, "hash-dup-first") is True
+    assert await client.verify_evidence("hash-dup-second") is False
+
+
+async def test_a_decision_straight_after_its_incident_needs_no_retry(client):
+    """The old 'transient endorsement race' came from the same missing wait: the
+    next transaction could be endorsed on a peer that had not applied the previous
+    block. Now it must succeed on the first attempt."""
+    await client.record_incident("INT-TEST-ORDER", "dev-1", "ddos", "hash-order", TS)
+    result = await client.record_decision("INT-TEST-ORDER", "hash-risk", "RULE-1", "isolate_non_critical")
+    assert result.tx_id
+
+
+async def test_two_simultaneous_writers_of_one_incident_yield_exactly_one_committed(client):
+    """One of two concurrent recordIncident calls for the same new id is
+    invalidated at commit (MVCC conflict) or rejected at endorsement; the client
+    must report that one as a failure, not a success."""
+    outcomes = await asyncio.gather(
+        client.record_incident("INT-TEST-RACE", "dev-1", "ddos", "hash-race-a", TS),
+        client.record_incident("INT-TEST-RACE", "dev-1", "ddos", "hash-race-b", TS),
+        return_exceptions=True,
+    )
+    successes = [o for o in outcomes if not isinstance(o, BaseException)]
+    assert len(successes) == 1
+    on_ledger = [
+        await _wait_until_verified(client, "hash-race-a", tries=3),
+        await _wait_until_verified(client, "hash-race-b", tries=3),
+    ]
+    assert sorted(on_ledger) == [False, True]

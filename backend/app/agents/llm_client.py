@@ -27,6 +27,8 @@ from typing import Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from app.agents.grounding import IncidentIdMismatchError, check_incident_id
+
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -79,10 +81,20 @@ class MockLLMClient:
         return self.responses.pop(0)
 
 
-def generate_validated(client: LLMClient, prompt: str, output_schema: type[T], agent_name: str) -> T:
+def generate_validated(
+    client: LLMClient,
+    prompt: str,
+    output_schema: type[T],
+    agent_name: str,
+    expected_incident_id: str | None = None,
+) -> T:
     """Call `client.generate`, validate the result against `output_schema`,
     and retry once with the validation error appended to the prompt if it
     fails. Raises `AgentFailure` if the retry also fails to validate.
+
+    If `expected_incident_id` is given, an output whose `incident_id` names a
+    different incident counts as a validation failure (retried once, then
+    `AgentFailure`) -- see `app.agents.grounding.check_incident_id`.
 
     This is the one place the retry policy is implemented -- every agent
     calls this instead of hand-rolling its own try/except around
@@ -91,22 +103,25 @@ def generate_validated(client: LLMClient, prompt: str, output_schema: type[T], a
     """
     raw_response = client.generate(prompt)
     try:
-        return _parse(raw_response, output_schema)
-    except (ValidationError, json.JSONDecodeError) as first_error:
+        return _parse(raw_response, output_schema, expected_incident_id)
+    except (ValidationError, json.JSONDecodeError, IncidentIdMismatchError) as first_error:
         retry_prompt = (
             f"{prompt}\n\nYour previous response failed schema validation with this error:\n"
             f"{first_error}\n\nRespond again with a corrected JSON object matching the schema."
         )
         retry_response = client.generate(retry_prompt)
         try:
-            return _parse(retry_response, output_schema)
-        except (ValidationError, json.JSONDecodeError) as second_error:
+            return _parse(retry_response, output_schema, expected_incident_id)
+        except (ValidationError, json.JSONDecodeError, IncidentIdMismatchError) as second_error:
             raise AgentFailure(agent_name, str(second_error)) from second_error
 
 
-def _parse(raw_response: str, output_schema: type[T]) -> T:
+def _parse(raw_response: str, output_schema: type[T], expected_incident_id: str | None = None) -> T:
     payload = json.loads(raw_response)
-    return output_schema.model_validate(payload)
+    output = output_schema.model_validate(payload)
+    if expected_incident_id is not None:
+        check_incident_id(output, expected_incident_id)
+    return output
 
 
 @dataclass
@@ -145,7 +160,7 @@ class GeminiLLMClient:
     """
 
     api_key: str
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-3.8-flash"
     calls: list[str] = field(default_factory=list, repr=False)
 
     def __post_init__(self) -> None:

@@ -18,6 +18,7 @@ the prompt and the trace for correlation, nothing more.
 import json
 
 from app.agents.base import run_agent_call
+from app.agents.grounding import ground_recovery_result
 from app.agents.llm_client import LLMClient
 from app.agents.tools import AgentToolkit
 from app.schemas.agents import RecoveryResult
@@ -52,8 +53,19 @@ def _build_prompt(incident_id: str, response_id: str, device_id: str, toolkit: A
     )
 
 
+def count_attack_events(toolkit: AgentToolkit, device_id: str) -> int:
+    """Number of attack-labelled network events recorded for `device_id` so far.
+    The orchestrator snapshots this right after a response executes."""
+    return sum(1 for e in toolkit.get_network_events(device_id) if e.is_attack_injection)
+
+
 def verify_recovery(
-    client: LLMClient, toolkit: AgentToolkit, incident_id: str, response_id: str, device_id: str
+    client: LLMClient,
+    toolkit: AgentToolkit,
+    incident_id: str,
+    response_id: str,
+    device_id: str,
+    attack_events_at_execution: int | None = None,
 ) -> RecoveryResult:
     """Run the Recovery Verification Agent.
 
@@ -73,6 +85,15 @@ def verify_recovery(
     incident -- this function still does not do that itself.
     """
     prompt = _build_prompt(incident_id, response_id, device_id, toolkit)
+    ground = None
+    if attack_events_at_execution is not None:
+
+        def ground(result: RecoveryResult) -> tuple[RecoveryResult, list[str]]:
+            # Counted when the model has answered, so evidence that arrived while the
+            # model was thinking is included. A count, so it needs no clock.
+            new_attack_events = max(0, count_attack_events(toolkit, device_id) - attack_events_at_execution)
+            return ground_recovery_result(result, new_attack_events)
+
     return run_agent_call(
         client=client,
         toolkit=toolkit,
@@ -82,4 +103,5 @@ def verify_recovery(
         output_schema=RecoveryResult,
         input_payload={"incident_id": incident_id, "response_id": response_id, "device_id": device_id},
         stall_status=IncidentStatus.RECOVERY_VERIFICATION_STALLED,
+        ground=ground,
     )

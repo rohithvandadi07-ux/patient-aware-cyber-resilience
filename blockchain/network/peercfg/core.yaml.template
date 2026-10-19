@@ -604,6 +604,25 @@ chaincode:
          path: __EXTERNAL_BUILDER_PATH__
          propagateEnvironment:
            - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG
+           # The builder runs `npm ci`, and Fabric runs builders with a stripped
+           # environment. Without these, npm cannot reach the registry behind a
+           # corporate/outbound proxy or a custom CA (it fails with
+           # SELF_SIGNED_CERT_IN_CHAIN, retries for about a minute, then crashes).
+           # Variables that are not set in the peer's own environment are simply
+           # not passed, so this is harmless on an unproxied network.
+           - HOME
+           - HTTPS_PROXY
+           - https_proxy
+           - HTTP_PROXY
+           - http_proxy
+           - NO_PROXY
+           - no_proxy
+           - NODE_EXTRA_CA_CERTS
+           - SSL_CERT_FILE
+           - npm_config_registry
+           - npm_config_cafile
+           - npm_config_proxy
+           - npm_config_https_proxy
 
 
     # The maximum duration to wait for the chaincode build and install process
