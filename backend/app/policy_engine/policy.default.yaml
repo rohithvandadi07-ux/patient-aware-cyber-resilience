@@ -1,0 +1,71 @@
+# PACR routing policy (policy-as-code). Rules are evaluated top to bottom; the first rule whose
+# `when` conditions all hold decides. `{action}` and `{impact}` in a rationale are filled in.
+#
+# The loader refuses to start if this policy ever lets (a) a patient-dependent device run
+# shutdown / isolate_critical autonomously, or (b) any action with response_impact high or
+# critical run autonomously, or if any input is left uncovered. You can tighten or extend the
+# policy; you cannot weaken that floor.
+version: 1
+name: pacr-default-policy
+rules:
+  - id: patient_dependent_severe_action
+    when:
+      patient_dependency: true
+      action_in: [shutdown, isolate_critical]
+    requires_human_approval: true
+    rationale: >-
+      Human approval required unconditionally: patient_dependency=true and action={action} is in
+      the Section 13 unconditional-approval set {shutdown, isolate_critical}, regardless of
+      response_impact or cyber_risk.
+
+  - id: approval_high_acuity_patient
+    when:
+      patient_dependency: true
+      acuity: high
+      action_in:
+        - shutdown
+        - isolate_critical
+        - quarantine_segment
+        - failover
+        - isolate_non_critical
+        - restrict_communication
+        - restart_service
+        - block_traffic
+    requires_human_approval: true
+    rationale: >-
+      Human approval required: the connected patient is currently HIGH acuity and action={action}
+      is disruptive on a patient-dependent device, regardless of response_impact or cyber_risk.
+
+  - id: autonomous_low_impact
+    when:
+      impact_at_most: low
+    requires_human_approval: false
+    rationale: >-
+      Autonomous execution allowed: response_impact={impact} <= low, regardless of cyber_risk.
+
+  - id: autonomous_medium_non_dependent
+    when:
+      impact_equals: medium
+      patient_dependency: false
+    requires_human_approval: false
+    rationale: >-
+      Autonomous execution allowed: response_impact=medium and patient_dependency=false.
+
+  - id: approval_medium_patient_dependent_gap_fill
+    when:
+      impact_equals: medium
+      patient_dependency: true
+    requires_human_approval: true
+    rationale: >-
+      Human approval required: response_impact=medium and patient_dependency=true. Section 13 does
+      not explicitly rule on this combination (its stated rules cover response_impact<=low,
+      response_impact==medium-with-non-dependent-device, and response_impact>=high) -- this is a
+      deliberate conservative gap-fill, not a literal Section 13 rule, chosen because a
+      patient-dependent device with non-trivial response impact should default to human oversight.
+
+  - id: approval_high_impact
+    when:
+      impact_at_least: high
+    requires_human_approval: true
+    rationale: >-
+      Human approval required: response_impact={impact} >= high, regardless of cyber_risk.

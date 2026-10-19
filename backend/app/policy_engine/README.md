@@ -50,3 +50,14 @@ not assumed) across `rules.py`/`engine.py`.
   candidate actions ranked by (approval needed, response impact, security
   benefit), each with its own rule id; candidates with no score are skipped. The
   dashboard's response panel renders them as an "Alternatives considered" table.
+
+## Policy-as-code (M5a)
+
+The routing rules are now data: `policy.default.yaml`, loaded and checked by `table.py`.
+`rules.classify_routing` stays as the reference implementation, and
+`tests/test_policy_table.py` proves the YAML gives the identical answer (rule id and rationale)
+for every input. A policy that leaves an input uncovered, or lets a patient-dependent
+shutdown/isolate-critical or any high-impact action run without a human, is refused at load
+(there is no fallback). `POLICY_FILE=/path/site.yaml` selects a site policy. `GET /policy` shows
+the active rules and `policy_hash`; recompute it independently with
+`python -m app.policy_engine.table file.yaml`.
