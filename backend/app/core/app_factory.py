@@ -251,6 +251,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.events import router as events_router
     from app.api.health import router as health_router
     from app.api.incidents import router as incidents_router
+    from app.api.ingest import router as ingest_router
     from app.api.patients import router as patients_router
     from app.api.recovery import router as recovery_router
     from app.api.responses import router as responses_router
@@ -271,6 +272,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(telemetry_router, dependencies=_auth)
     app.include_router(events_router, dependencies=_auth)
     app.include_router(incidents_router, dependencies=_auth)
+    app.include_router(ingest_router, dependencies=_auth)
     app.include_router(risk_assessments_router, dependencies=_auth)
     app.include_router(agents_router, dependencies=_auth)
     app.include_router(responses_router, dependencies=_auth)

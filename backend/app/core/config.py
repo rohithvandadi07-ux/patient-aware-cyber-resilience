@@ -184,6 +184,15 @@ class Settings(BaseSettings):
         "below ~2 MB would reject a full batch.",
     )
 
+    # --- Alert ingestion (POST /ingest/alerts) ---
+    device_ip_map: Annotated[dict[str, str], NoDecode] = Field(
+        default_factory=dict,
+        description="IP address -> registered device_id, for alerts from Suricata/Wazuh that name "
+        "a device only by IP. Env DEVICE_IP_MAP='10.0.1.30=ecg-monitor-01,10.0.1.20=ventilator-01' "
+        "(or a JSON object). Empty by default: an alert whose device cannot be identified is "
+        "rejected, never assigned to a guessed device.",
+    )
+
     # --- Policy Engine confidence gate (post-Phase-15, opt-in) ---
     policy_min_autonomous_confidence: float | None = Field(
         default=None,
@@ -231,6 +240,30 @@ class Settings(BaseSettings):
         if stripped.startswith("["):
             return json.loads(stripped)
         return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+
+    @field_validator("device_ip_map", mode="before")
+    @classmethod
+    def _parse_device_ip_map(cls, value: object) -> object:
+        """'ip=device_id,ip=device_id' or a JSON object. A malformed entry fails at startup."""
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        if not stripped:
+            return {}
+        if stripped.startswith("{"):
+            return json.loads(stripped)
+        parsed: dict[str, str] = {}
+        for entry in stripped.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if entry.count("=") != 1:
+                raise ValueError(f"DEVICE_IP_MAP entry {entry!r} must be 'ip=device_id'")
+            ip, device = (p.strip() for p in entry.split("="))
+            if not ip or not device:
+                raise ValueError(f"DEVICE_IP_MAP entry {entry!r} has an empty side")
+            parsed[ip] = device
+        return parsed
 
     @field_validator("api_keys", mode="before")
     @classmethod
