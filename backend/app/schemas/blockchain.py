@@ -46,3 +46,12 @@ class RecoveryProvenance(BaseModel):
     incident_id: str
     recovery_verified: bool
     residual_threats_hash: str | None = None
+
+
+class PolicyProvenance(BaseModel):
+    """A routing policy's SHA-256 (see app/policy_engine/table.py), anchored when activated."""
+
+    policy_hash: str
+    policy_name: str
+    policy_version: int
+    timestamp: datetime

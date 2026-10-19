@@ -36,6 +36,10 @@ _RESPONSE_ACTION_CATEGORIES = {
 _APPROVAL_DECISIONS = {"approved", "rejected"}
 
 
+def _is_sha256_hex(value: str) -> bool:
+    return len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+
+
 @dataclass
 class _IncidentState:
     incident: dict
@@ -52,6 +56,7 @@ class MockFabricClient:
     def __init__(self) -> None:
         self._incidents: dict[str, _IncidentState] = {}
         self._evidence_hashes: set[str] = set()
+        self._policies: dict[str, dict] = {}
         self._tx_counter = itertools.count(1)
 
     def _next_tx_id(self) -> str:
@@ -164,3 +169,29 @@ class MockFabricClient:
 
     async def verify_evidence(self, evidence_hash: str) -> bool:
         return evidence_hash in self._evidence_hashes
+
+    async def record_policy(
+        self, policy_hash: str, policy_name: str, policy_version: str, timestamp: str
+    ) -> FabricTxResult:
+        if not _is_sha256_hex(policy_hash):
+            raise FabricInvocationError(
+                f"policy_hash must be a 64-character lowercase hex SHA-256, got '{policy_hash}'"
+            )
+        if not policy_name.strip() or not policy_version.strip():
+            raise FabricInvocationError("policy_name and policy_version must be non-empty")
+        tx_id = self._next_tx_id()
+        existing = self._policies.get(policy_hash)
+        if existing is not None:
+            return FabricTxResult(tx_id=tx_id, payload=existing)
+        record = {
+            "policyHash": policy_hash,
+            "policyName": policy_name,
+            "policyVersion": policy_version,
+            "timestamp": timestamp,
+            "recordedTxId": tx_id,
+        }
+        self._policies[policy_hash] = record
+        return FabricTxResult(tx_id=tx_id, payload=record)
+
+    async def verify_policy(self, policy_hash: str) -> bool:
+        return policy_hash in self._policies

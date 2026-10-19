@@ -141,5 +141,12 @@ class OutboxWorker:
                     recovery_verified=payload["recovery_verified"],
                     residual_threats_hash=payload.get("residual_threats_hash"),
                 )
+            case OutboxRecordType.POLICY:
+                return await self._client.record_policy(
+                    policy_hash=payload["policy_hash"],
+                    policy_name=payload["policy_name"],
+                    policy_version=str(payload["policy_version"]),
+                    timestamp=payload["timestamp"],
+                )
             case _:
                 raise AssertionError(f"unhandled OutboxRecordType: {entry.record_type}")

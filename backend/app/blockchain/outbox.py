@@ -33,6 +33,7 @@ from app.schemas.blockchain import (
     ApprovalProvenance,
     DecisionProvenance,
     IncidentProvenance,
+    PolicyProvenance,
     RecoveryProvenance,
     ResponseProvenance,
 )
@@ -149,6 +150,10 @@ def enqueue_response(repository: OutboxRepository, provenance: ResponseProvenanc
 
 def enqueue_recovery(repository: OutboxRepository, provenance: RecoveryProvenance) -> OutboxEntry:
     return repository.enqueue(OutboxRecordType.RECOVERY, provenance.model_dump(mode="json"))
+
+
+def enqueue_policy(repository: OutboxRepository, provenance: PolicyProvenance) -> OutboxEntry:
+    return repository.enqueue(OutboxRecordType.POLICY, provenance.model_dump(mode="json"))
 
 
 def _entry_from_row(row: OutboxEntryORM) -> OutboxEntry:

@@ -94,3 +94,13 @@ cd blockchain/chaincode
 npm install
 npm test
 ```
+
+## Policy anchoring
+
+Beyond the six operations, `recordPolicy(policy_hash, policy_name, policy_version, timestamp)`
+stores the SHA-256 of a routing policy the first time it is activated (idempotent: re-recording a
+hash already on the ledger returns the original record and writes nothing), and
+`verifyPolicy(policy_hash)` answers whether that exact hash was ever anchored. The hash must be 64
+lowercase hex characters. The hash is computed by `backend/app/policy_engine/table.py`. Deploying
+this to a running Fabric network needs a new chaincode version/sequence through the existing
+package/deploy scripts.

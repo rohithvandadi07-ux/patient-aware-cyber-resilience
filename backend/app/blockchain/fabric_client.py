@@ -97,6 +97,12 @@ class FabricClient(Protocol):
 
     async def verify_evidence(self, evidence_hash: str) -> bool: ...
 
+    async def record_policy(
+        self, policy_hash: str, policy_name: str, policy_version: str, timestamp: str
+    ) -> FabricTxResult: ...
+
+    async def verify_policy(self, policy_hash: str) -> bool: ...
+
 
 class SubprocessFabricClient:
     """Real `FabricClient`, implemented by shelling out to
@@ -155,6 +161,18 @@ class SubprocessFabricClient:
             "recordRecovery",
             [incident_id, "true" if recovery_verified else "false", residual_threats_hash or ""],
         )
+
+    async def record_policy(
+        self, policy_hash: str, policy_name: str, policy_version: str, timestamp: str
+    ) -> FabricTxResult:
+        return await self._invoke(
+            "recordPolicy", [policy_hash, policy_name, policy_version, timestamp]
+        )
+
+    async def verify_policy(self, policy_hash: str) -> bool:
+        args = _args_json(["verifyPolicy", policy_hash])
+        stdout, _ = await self._run_script("query.sh", [self._chaincode_name, args])
+        return stdout.strip() == "true"
 
     async def verify_evidence(self, evidence_hash: str) -> bool:
         args = _args_json(["verifyEvidence", evidence_hash])

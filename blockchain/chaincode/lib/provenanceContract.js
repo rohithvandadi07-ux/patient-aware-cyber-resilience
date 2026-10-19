@@ -24,6 +24,7 @@ const APPROVAL_DECISIONS = ['approved', 'rejected'];
 
 const INCIDENT_KEY_PREFIX = 'incident';
 const EVIDENCE_HASH_KEY_PREFIX = 'evidenceHash';
+const POLICY_KEY_PREFIX = 'policy';
 
 function requireNonEmpty(value, fieldName) {
     if (typeof value !== 'string' || value.trim().length === 0) {
@@ -57,6 +58,18 @@ function requireBoolString(value, fieldName) {
         throw new Error(`${fieldName} must be 'true' or 'false', got '${value}'`);
     }
     return normalized === 'true';
+}
+
+function requireSha256Hex(value, fieldName) {
+    requireNonEmpty(value, fieldName);
+    if (!/^[0-9a-f]{64}$/.test(value)) {
+        throw new Error(`${fieldName} must be a 64-character lowercase hex SHA-256, got '${value}'`);
+    }
+    return value;
+}
+
+function policyKey(hash) {
+    return `${POLICY_KEY_PREFIX}:${hash}`;
 }
 
 function incidentKey(incidentId) {
@@ -228,6 +241,37 @@ class ProvenanceContract extends Contract {
         requireNonEmpty(evidenceHash, 'evidence_hash');
         const existing = await ctx.stub.getState(evidenceHashKey(evidenceHash));
         return existing && existing.length > 0;
+    }
+
+    // --- Policy anchoring (beyond the six named operations). Records the SHA-256 of a
+    // routing policy (backend/app/policy_engine/table.py) the first time it is activated.
+    // Idempotent: a hash already on the ledger returns the original record and writes nothing.
+    async recordPolicy(ctx, policyHash, policyName, policyVersion, timestamp) {
+        requireSha256Hex(policyHash, 'policy_hash');
+        requireNonEmpty(policyName, 'policy_name');
+        requireNonEmpty(policyVersion, 'policy_version');
+        requireIsoTimestamp(timestamp, 'timestamp');
+
+        const key = policyKey(policyHash);
+        const existing = await ctx.stub.getState(key);
+        if (existing && existing.length > 0) {
+            return existing.toString('utf8');
+        }
+        const record = {
+            policyHash,
+            policyName,
+            policyVersion,
+            timestamp,
+            recordedTxId: ctx.stub.getTxID(),
+        };
+        await ctx.stub.putState(key, Buffer.from(JSON.stringify(record)));
+        return JSON.stringify(record);
+    }
+
+    async verifyPolicy(ctx, policyHash) {
+        requireSha256Hex(policyHash, 'policy_hash');
+        const existing = await ctx.stub.getState(policyKey(policyHash));
+        return Boolean(existing && existing.length > 0);
     }
 
     // --- Read-only convenience extensions (not part of the six-operation

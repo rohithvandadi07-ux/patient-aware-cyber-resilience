@@ -95,6 +95,7 @@ class OutboxRecordType(StrEnum):
     APPROVAL = "approval"
     RESPONSE = "response"
     RECOVERY = "recovery"
+    POLICY = "policy"
 
 
 class OutboxStatus(StrEnum):

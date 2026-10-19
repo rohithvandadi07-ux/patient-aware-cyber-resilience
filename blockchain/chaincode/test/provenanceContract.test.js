@@ -201,3 +201,46 @@ test('getProvenanceTrail accumulates every decision/approval/response/recovery f
     assert.equal(otherTrail.decisions.length, 1);
     assert.equal(otherTrail.decisions[0].policyRuleId, 'RULE-9');
 });
+
+const POLICY_HASH = 'a'.repeat(64);
+
+test('recordPolicy stores a policy and verifyPolicy finds it', async () => {
+    const { contract, ctx } = newFixture();
+    const out = JSON.parse(
+        await contract.recordPolicy(ctx, POLICY_HASH, 'pacr-default-policy', '1', ISO_TS)
+    );
+    assert.equal(out.policyHash, POLICY_HASH);
+    assert.equal(out.policyName, 'pacr-default-policy');
+    assert.ok(out.recordedTxId);
+    assert.equal(await contract.verifyPolicy(ctx, POLICY_HASH), true);
+});
+
+test('verifyPolicy is false for a hash that was never recorded', async () => {
+    const { contract, ctx } = newFixture();
+    assert.equal(await contract.verifyPolicy(ctx, 'b'.repeat(64)), false);
+});
+
+test('recordPolicy is idempotent and keeps the original record', async () => {
+    const { contract, ctx } = newFixture();
+    const first = JSON.parse(await contract.recordPolicy(ctx, POLICY_HASH, 'original', '1', ISO_TS));
+    const second = JSON.parse(
+        await contract.recordPolicy(ctx, POLICY_HASH, 'renamed', '2', '2027-01-01T00:00:00.000Z')
+    );
+    assert.deepEqual(second, first);
+});
+
+test('recordPolicy rejects a malformed hash', async () => {
+    const { contract, ctx } = newFixture();
+    await assert.rejects(
+        () => contract.recordPolicy(ctx, 'not-a-hash', 'n', '1', ISO_TS),
+        /policy_hash/
+    );
+});
+
+test('recordPolicy rejects a bad timestamp', async () => {
+    const { contract, ctx } = newFixture();
+    await assert.rejects(
+        () => contract.recordPolicy(ctx, POLICY_HASH, 'n', '1', 'yesterday'),
+        /timestamp/
+    );
+});
