@@ -23,9 +23,9 @@ one field it needs from `ProposedResponse`.
 from app.policy_engine.rules import (
     _IMPACT_ORDER,
     apply_confidence_gate,
-    decide_routing,
     get_response_impact_for_action,
 )
+from app.policy_engine.table import PolicyTable, get_active_table
 from app.schemas.agents import ClinicalContext, ProposedResponse
 from app.schemas.enums import ResponseActionCategory
 from app.schemas.policy import AlternativeAction, PolicyDecision
@@ -46,14 +46,28 @@ class PolicyEngine:
     this value, or unknown. Off, the engine is exactly Section 13's rules.
     """
 
-    def __init__(self, min_autonomous_confidence: float | None = None) -> None:
+    def __init__(
+        self, min_autonomous_confidence: float | None = None, policy: PolicyTable | None = None
+    ) -> None:
         if min_autonomous_confidence is not None and not 0.0 < min_autonomous_confidence <= 1.0:
             raise ValueError("min_autonomous_confidence must be in (0, 1] or None")
         self._min_autonomous_confidence = min_autonomous_confidence
+        self._policy = policy
 
     @property
     def min_autonomous_confidence(self) -> float | None:
         return self._min_autonomous_confidence
+
+    @property
+    def policy(self) -> PolicyTable:
+        # The table passed in, else the process-wide active policy (bundled YAML or POLICY_FILE).
+        return self._policy if self._policy is not None else get_active_table()
+
+    def _route(
+        self, risk_score: RiskScore, context: ClinicalContext, action: ResponseActionCategory
+    ) -> tuple[bool, str, str]:
+        impact = get_response_impact_for_action(risk_score, action)
+        return self.policy.classify(impact, context.patient_dependency, action, context.patient_acuity)
 
     def evaluate_action(
         self,
@@ -79,7 +93,7 @@ class PolicyEngine:
             )
 
         requires_human_approval, policy_rule_id, rationale = apply_confidence_gate(
-            decide_routing(risk_score, context, action_category),
+            self._route(risk_score, context, action_category),
             detection_confidence,
             self._min_autonomous_confidence,
         )
@@ -145,7 +159,7 @@ class PolicyEngine:
             except ValueError:
                 continue
             requires_approval, rule_id, _ = apply_confidence_gate(
-                decide_routing(risk_score, context, action),
+                self._route(risk_score, context, action),
                 detection_confidence,
                 self._min_autonomous_confidence,
             )

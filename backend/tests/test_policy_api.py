@@ -1,7 +1,12 @@
+from fastapi.testclient import TestClient
+
+from app.core.app_factory import create_app
+from app.core.config import Settings
 from app.policy_engine.table import get_active_table
 
 
-def test_policy_endpoint_reports_active_policy_and_hash(client):
+def test_policy_endpoint_reports_active_policy_and_hash():
+    client = TestClient(create_app(Settings()))
     response = client.get("/policy")
     assert response.status_code == 200
     body = response.json()

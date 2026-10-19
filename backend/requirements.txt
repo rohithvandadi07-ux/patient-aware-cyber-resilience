@@ -38,3 +38,4 @@ google-genai==2.30.0
 alembic==1.14.0
 
 cryptography>=43
+PyYAML==6.0.2
