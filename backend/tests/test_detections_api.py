@@ -29,7 +29,11 @@ def trained_service(tmp_path_factory):
     return DetectionService(model, confidence_threshold=0.0)
 
 
-def test_run_scenario_without_model_returns_503():
+def test_run_scenario_without_model_returns_503(monkeypatch, tmp_path):
+    import app.api.detections as detections_module
+
+    monkeypatch.setattr(detections_module, "_DEFAULT_MODEL_PATH", tmp_path / "no_model.joblib")
+    monkeypatch.setattr(detections_module, "_service_cache", None)
     # No override installed -- the real get_detection_service looks for
     # experiments/models/random_forest.joblib, which does not exist in this
     # test environment (gitignored, never committed).
