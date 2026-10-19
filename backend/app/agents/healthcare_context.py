@@ -87,5 +87,7 @@ def assess_clinical_context(
         # The prompt asks the model to copy criticality / patient dependency from
         # the registry; this enforces it, because the Policy Engine's hard rule
         # reads these two fields from this output.
-        ground=lambda context: ground_clinical_context(context, primary),
+        ground=lambda context: ground_clinical_context(
+            context, primary, toolkit.get_patient_state(primary.device_id)
+        ),
     )

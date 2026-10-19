@@ -11,6 +11,7 @@ act.
 from pydantic import BaseModel, Field
 
 from app.schemas.enums import AttackCategory, DeviceCriticality, ImpactLevel, ResponseActionCategory
+from app.schemas.patient import AcuityBand
 
 
 class InvestigationReport(BaseModel):
@@ -48,6 +49,15 @@ class ClinicalContext(BaseModel):
         default_factory=list,
         description="Explicit constraints the Policy Engine must respect for this device "
         "(e.g. 'ventilator must not be powered off while patient_dependency is true').",
+    )
+    patient_acuity: AcuityBand | None = Field(
+        default=None,
+        description="Live NEWS2-based acuity band of the patient attached to the device. "
+        "Filled by grounding from the patient registry, never trusted from the LLM. "
+        "None when no patient is linked.",
+    )
+    news2_score: int | None = Field(
+        default=None, ge=0, le=20, description="NEWS2 score behind patient_acuity (registry-derived)."
     )
 
 

@@ -128,6 +128,7 @@ def get_agent_toolkit(request: Request) -> AgentToolkit:
         log_handler=request.app.state.log_handler,
         trace_recorder=request.app.state.agent_trace_recorder,
         recovery_result_repository=request.app.state.recovery_result_repository,
+        patient_registry=request.app.state.patient_registry,
     )
 
 

@@ -13,6 +13,7 @@ with the specific rule that fired, not just the outcome").
 
 from app.schemas.agents import ClinicalContext, ThreatAssessment
 from app.schemas.enums import DeviceCriticality, ImpactLevel, ResponseActionCategory
+from app.schemas.patient import AcuityBand
 
 # Base cyber-risk score per severity level, before confidence scaling.
 # Deliberately not linear (0.0/0.33/0.67/1.0) -- a CRITICAL-severity threat
@@ -78,6 +79,15 @@ _IMPACT_CLINICAL_RISK_BUMP: dict[ImpactLevel, float] = {
 _PATIENT_DEPENDENCY_CLINICAL_RISK_FLOOR = 0.55
 
 
+# Additive clinical-risk bump from the live acuity of the patient attached to the device
+# (NEWS2-based, from the patient registry). Zero when no patient is linked.
+_ACUITY_CLINICAL_RISK_BUMP: dict[AcuityBand, float] = {
+    AcuityBand.LOW: 0.0,
+    AcuityBand.MEDIUM: 0.05,
+    AcuityBand.HIGH: 0.10,
+}
+
+
 def score_clinical_risk(context: ClinicalContext) -> tuple[float, str]:
     """clinical_risk = device criticality's base score + a clinical-impact
     bump, floored at `_PATIENT_DEPENDENCY_CLINICAL_RISK_FLOOR` whenever
@@ -99,6 +109,14 @@ def score_clinical_risk(context: ClinicalContext) -> tuple[float, str]:
             f"clinical_risk={score}: {base} criticality={context.device_criticality.value} base "
             f"+ {bump} clinical_impact_level={context.clinical_impact_level.value} bump"
             + (", patient_dependency=true (already above floor)" if context.patient_dependency else "")
+        )
+
+    acuity_bump = _ACUITY_CLINICAL_RISK_BUMP[context.patient_acuity] if context.patient_acuity else 0.0
+    if acuity_bump:
+        score = round(score + acuity_bump, 4)
+        explanation += (
+            f"; patient acuity {context.patient_acuity.value} (NEWS2 {context.news2_score}) "
+            f"adds +{acuity_bump}"
         )
 
     return min(score, 1.0), explanation
@@ -148,7 +166,7 @@ assert _SEVERE_DISRUPTION_ACTIONS | _MODERATE_DISRUPTION_ACTIONS | _NON_DISRUPTI
 ), "every ResponseActionCategory must be classified into exactly one disruption tier"
 
 
-def score_response_impact(
+def _score_response_impact_base(
     action_category: ResponseActionCategory, context: ClinicalContext
 ) -> tuple[ImpactLevel, str]:
     """Per-action response_impact: how clinically disruptive this specific
@@ -213,4 +231,30 @@ def score_response_impact(
     return ImpactLevel.LOW, (
         f"response_impact=low for {action_category.value}: non-disruptive action "
         "(credential/session/backup-only, no device operation touched)"
+    )
+
+
+_IMPACT_TIERS = [ImpactLevel.LOW, ImpactLevel.MEDIUM, ImpactLevel.HIGH, ImpactLevel.CRITICAL]
+
+
+def score_response_impact(
+    action_category: ResponseActionCategory, context: ClinicalContext
+) -> tuple[ImpactLevel, str]:
+    # Base tables first, then escalate when the connected patient is currently HIGH acuity:
+    # a severe-disruption action becomes CRITICAL, a moderate one rises one tier, and a
+    # non-disruptive action is left alone. No patient linked -> identical to the base result.
+    level, explanation = _score_response_impact_base(action_category, context)
+    if context.patient_acuity != AcuityBand.HIGH or not context.patient_dependency:
+        return level, explanation
+    if action_category in _SEVERE_DISRUPTION_ACTIONS:
+        target = ImpactLevel.CRITICAL
+    elif action_category in _MODERATE_DISRUPTION_ACTIONS:
+        target = _IMPACT_TIERS[min(_IMPACT_TIERS.index(level) + 1, len(_IMPACT_TIERS) - 1)]
+    else:
+        return level, explanation
+    if _IMPACT_TIERS.index(target) <= _IMPACT_TIERS.index(level):
+        return level, explanation
+    return target, (
+        f"{explanation}; escalated to response_impact={target.value} because the connected "
+        f"patient's acuity is HIGH (NEWS2 {context.news2_score})"
     )

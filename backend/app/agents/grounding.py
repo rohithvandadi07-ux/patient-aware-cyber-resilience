@@ -38,6 +38,7 @@ from pydantic import BaseModel
 from app.schemas.agents import ClinicalContext, RecoveryResult
 from app.schemas.device import DeviceState
 from app.schemas.enums import DeviceCriticality, ImpactLevel
+from app.schemas.patient import AcuityBand, PatientState
 
 _IMPACT_ORDER = {ImpactLevel.LOW: 0, ImpactLevel.MEDIUM: 1, ImpactLevel.HIGH: 2, ImpactLevel.CRITICAL: 3}
 
@@ -57,7 +58,7 @@ def check_incident_id(output: BaseModel, expected_incident_id: str) -> None:
 
 
 def ground_clinical_context(
-    context: ClinicalContext, device: DeviceState
+    context: ClinicalContext, device: DeviceState, patient: PatientState | None = None
 ) -> tuple[ClinicalContext, list[str]]:
     """Return `context` with registry facts enforced, and a description of each
     correction made (empty if the agent was already consistent)."""
@@ -84,6 +85,29 @@ def ground_clinical_context(
             "HIGH-criticality, patient-dependent device; raised to 'high' (the floor for that combination)"
         )
         updates["clinical_impact_level"] = ImpactLevel.HIGH
+
+    # Patient acuity is enforced from the patient registry, never taken from the LLM.
+    if patient is not None:
+        if context.patient_acuity != patient.acuity_band or context.news2_score != patient.news2_score:
+            updates["patient_acuity"] = patient.acuity_band
+            updates["news2_score"] = patient.news2_score
+        current_impact = updates.get("clinical_impact_level", context.clinical_impact_level)
+        if (
+            patient.acuity_band == AcuityBand.HIGH
+            and device.patient_dependency
+            and _IMPACT_ORDER[current_impact] < _IMPACT_ORDER[ImpactLevel.HIGH]
+        ):
+            corrections.append(
+                f"clinical_impact_level: agent said {current_impact.value!r} but the connected patient's "
+                f"acuity is HIGH (NEWS2 {patient.news2_score}); raised to 'high'"
+            )
+            updates["clinical_impact_level"] = ImpactLevel.HIGH
+    elif context.patient_acuity is not None or context.news2_score is not None:
+        corrections.append(
+            "patient_acuity: agent reported an acuity but no patient is linked to this device; cleared"
+        )
+        updates["patient_acuity"] = None
+        updates["news2_score"] = None
 
     if not updates:
         return context, corrections

@@ -45,6 +45,8 @@ from app.schemas.incident import Incident
 from app.schemas.policy import PolicyDecision
 from app.schemas.risk import RiskScore
 from app.schemas.telemetry import TelemetryReading
+from app.iomt_simulator.patients import PatientRegistry
+from app.schemas.patient import PatientState
 
 
 class AgentToolkit:
@@ -63,6 +65,7 @@ class AgentToolkit:
         log_handler: LogCaptureHandler,
         trace_recorder: AgentTraceRecorder,
         recovery_result_repository: RecoveryResultRepository | None = None,
+        patient_registry: PatientRegistry | None = None,
     ) -> None:
         self._device_registry = device_registry
         self._incident_repository = incident_repository
@@ -76,6 +79,14 @@ class AgentToolkit:
         # safe default since "no recovery checks recorded yet" is exactly
         # what a new incident's toolkit should report.
         self._recovery_result_repository = recovery_result_repository or RecoveryResultRepository()
+        # Optional: with no registry every device simply has no linked patient.
+        self._patient_registry = patient_registry
+
+    def get_patient_state(self, device_id: str) -> PatientState | None:
+        # Read-only lookup of the synthetic patient attached to a device (None if none/no registry).
+        if self._patient_registry is None:
+            return None
+        return self._patient_registry.for_device(device_id)
 
     @property
     def incident_repository(self) -> IncidentRepository:
