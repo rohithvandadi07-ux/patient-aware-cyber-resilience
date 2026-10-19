@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { signApproval } from '../approvals/signing'
+import { useApproverKey } from '../approvals/useApproverKey'
+import { ApproverKeyPanel } from './ApproverKeyPanel'
 import { deriveProposeResponseRequest } from '../api/proposeResponseFromTraces'
 import { useExecuteResponseMutation, useExecutedResponses, useProposeResponseMutation, useProposedResponse } from '../api/queries'
 import type { AgentTrace, ApprovalDecision, RiskScore } from '../api/types'
@@ -53,6 +56,8 @@ export function ResponsePanel({
 
   const [approverIdentity, setApproverIdentity] = useState('')
   const [notes, setNotes] = useState('')
+  const approver = useApproverKey()
+  const [signError, setSignError] = useState<string | null>(null)
 
   const derivation = deriveProposeResponseRequest(traces, riskScore)
   const patient = connectedPatient(traces)
@@ -62,17 +67,36 @@ export function ResponsePanel({
     proposeResponse.mutate(derivation.request)
   }
 
-  function handleExecute(decision: ApprovalDecision | null) {
-    const approval =
-      decision === null
-        ? null
-        : {
-            incident_id: incidentId,
-            approver_identity: approverIdentity,
-            decision,
-            timestamp: new Date().toISOString(),
-            notes: notes.trim() === '' ? null : notes.trim(),
-          }
+  async function handleExecute(decision: ApprovalDecision | null) {
+    setSignError(null)
+    if (decision === null) {
+      executeResponse.mutate({ incident_id: incidentId, approval: null })
+      return
+    }
+    const timestamp = new Date()
+    const approval = {
+      incident_id: incidentId,
+      approver_identity: approver.key?.identity ?? approverIdentity,
+      decision,
+      timestamp: timestamp.toISOString(),
+      notes: notes.trim() === '' ? null : notes.trim(),
+    }
+    const pending = proposedQuery.data
+    if (approver.key && pending) {
+      try {
+        const signature = await signApproval(approver.key, {
+          incidentId,
+          chosenAction: pending.chosen_action,
+          policyRuleId: pending.policy_rule_id,
+          decision,
+          timestamp,
+        })
+        executeResponse.mutate({ incident_id: incidentId, approval: { ...approval, signature } })
+      } catch (error) {
+        setSignError(error instanceof Error ? error.message : 'unknown error')
+      }
+      return
+    }
     executeResponse.mutate({ incident_id: incidentId, approval })
   }
 
@@ -142,13 +166,7 @@ export function ResponsePanel({
                 <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
                   Requires human approval before execution.
                 </p>
-                <input
-                  type="text"
-                  placeholder="Approver identity"
-                  value={approverIdentity}
-                  onChange={(e) => setApproverIdentity(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
-                />
+                <ApproverKeyPanel approver={approver} identity={approverIdentity} onIdentityChange={setApproverIdentity} />
                 <input
                   type="text"
                   placeholder="Notes (optional)"
@@ -160,7 +178,7 @@ export function ResponsePanel({
                   <button
                     type="button"
                     onClick={() => handleExecute('approved')}
-                    disabled={approverIdentity.trim() === '' || executeResponse.isPending}
+                    disabled={(approver.key === null && approverIdentity.trim() === '') || executeResponse.isPending}
                     className="rounded-md bg-clinical-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-clinical-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Approve &amp; execute
@@ -168,7 +186,7 @@ export function ResponsePanel({
                   <button
                     type="button"
                     onClick={() => handleExecute('rejected')}
-                    disabled={approverIdentity.trim() === '' || executeResponse.isPending}
+                    disabled={(approver.key === null && approverIdentity.trim() === '') || executeResponse.isPending}
                     className="rounded-md bg-danger-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Reject
@@ -209,6 +227,11 @@ export function ResponsePanel({
         {proposeResponse.isError && (
           <p className="mt-2 text-sm text-danger-600" role="alert">
             Propose failed: {proposeResponse.error instanceof Error ? proposeResponse.error.message : 'unknown error'}
+          </p>
+        )}
+        {signError && (
+          <p className="mt-2 text-sm text-danger-600" role="alert">
+            Signing failed: {signError}
           </p>
         )}
         {executeResponse.isError && (

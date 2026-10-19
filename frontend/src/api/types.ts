@@ -214,6 +214,8 @@ export interface ApprovalRecord {
   decision: ApprovalDecision
   timestamp: string
   notes: string | null
+  /** Base64 Ed25519 signature over the canonical approval message. */
+  signature?: string | null
 }
 
 export interface ExecutedResponse {
