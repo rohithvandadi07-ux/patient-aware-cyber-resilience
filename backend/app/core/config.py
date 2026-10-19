@@ -6,6 +6,7 @@ local development only) and is expected to be overridden via environment variabl
 or a `.env` file in real deployments (see `.env.example` at the repo root).
 """
 
+import base64
 import json
 from functools import lru_cache
 from typing import Annotated
@@ -81,6 +82,25 @@ class Settings(BaseSettings):
         "see .env.example. Empty by default, which is only safe because auth_enabled defaults to "
         "False; turning auth_enabled on with no keys configured locks out every route but /health, "
         "deliberately (fail closed, not open).",
+    )
+
+    # --- Signed approvals (app/approvals/signing.py) ---
+    approver_public_keys: Annotated[dict[str, str], NoDecode] = Field(
+        default_factory=dict,
+        description="approver_identity -> base64 Ed25519 public key (32 raw bytes). Env "
+        "APPROVER_PUBLIC_KEYS='dr-alice=BASE64,dr-bob=BASE64' (or a JSON object). Generate a pair "
+        "with scripts/sign_approval.py keygen.",
+    )
+    require_signed_approvals: bool = Field(
+        default=False,
+        description="When true, /responses/executed refuses any approval without a valid signature "
+        "from a registered approver, and auto-approve is refused. Off by default so existing "
+        "deployments are unchanged; a signature that is present is verified either way.",
+    )
+    approval_max_age_s: float = Field(
+        default=300.0,
+        gt=0.0,
+        description="Reject a signed approval whose timestamp differs from server time by more than this.",
     )
 
     # --- Database (PostgreSQL + TimescaleDB extension) ---
@@ -264,6 +284,38 @@ class Settings(BaseSettings):
                 raise ValueError(f"DEVICE_IP_MAP entry {entry!r} has an empty side")
             parsed[ip] = device
         return parsed
+
+    @field_validator("approver_public_keys", mode="before")
+    @classmethod
+    def _parse_approver_public_keys(cls, value: object) -> object:
+        """'identity=base64key,...' or a JSON object. Every key must be 32 base64 bytes -- a typo
+        fails at startup rather than silently leaving an approver unable to sign."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                value = {}
+            elif stripped.startswith("{"):
+                value = json.loads(stripped)
+            else:
+                parsed: dict[str, str] = {}
+                for entry in stripped.split(","):
+                    entry = entry.strip()
+                    if not entry:
+                        continue
+                    identity, sep, key = entry.partition("=")
+                    if not sep or not identity.strip() or not key.strip():
+                        raise ValueError(f"APPROVER_PUBLIC_KEYS entry {entry[:40]!r} must be 'identity=base64key'")
+                    parsed[identity.strip()] = key.strip()
+                value = parsed
+        if isinstance(value, dict):
+            for identity, key in value.items():
+                try:
+                    raw = base64.b64decode(key, validate=True)
+                except Exception as exc:
+                    raise ValueError(f"public key for {identity!r} is not valid base64") from exc
+                if len(raw) != 32:
+                    raise ValueError(f"public key for {identity!r} must be 32 bytes, got {len(raw)}")
+        return value
 
     @field_validator("api_keys", mode="before")
     @classmethod

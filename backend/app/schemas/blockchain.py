@@ -32,6 +32,7 @@ class ApprovalProvenance(BaseModel):
     approver_identity: str
     decision: ApprovalDecision
     timestamp: datetime
+    signature: str | None = None
 
 
 class ResponseProvenance(BaseModel):

@@ -13,6 +13,11 @@ class ApprovalRecord(BaseModel):
     decision: ApprovalDecision
     timestamp: datetime
     notes: str | None = None
+    signature: str | None = Field(
+        default=None,
+        description="Base64 Ed25519 signature over the canonical approval message "
+        "(app/approvals/signing.py). Verified against Settings.approver_public_keys.",
+    )
 
 
 class ExecutedResponse(BaseModel):

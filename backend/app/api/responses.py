@@ -34,7 +34,9 @@ from app.api.dependencies import (
 )
 from app.blockchain.hashing import hash_payload
 from app.blockchain.outbox import OutboxRepository, enqueue_approval, enqueue_decision, enqueue_response
+from app.approvals.signing import ApprovalSignatureError, check_approval_signature
 from app.core.auth import Principal, get_current_principal, require_role
+from app.core.config import Settings, get_settings
 from app.iomt_simulator.registry import DeviceNotFoundError
 from app.policy_engine.engine import PolicyEngine
 from app.repositories.incidents import IncidentNotFoundError
@@ -132,6 +134,7 @@ async def execute_response(
     executed_repo: ExecutedResponseRepository = Depends(get_executed_response_repository),
     outbox_repo: OutboxRepository = Depends(get_outbox_repository),
     principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
 ) -> ExecutedResponse:
     # Post-Phase-15: executing a response with a human approval attached is
     # the one HTTP action that can both mutate a simulated device's state
@@ -150,6 +153,21 @@ async def execute_response(
             status_code=404,
             detail=f"No proposed response pending for incident {body.incident_id!r}",
         ) from exc
+
+    if body.approval is not None:
+        # Verified identity: with a signature, executed_by is no longer just a claimed string.
+        try:
+            check_approval_signature(
+                approval=body.approval,
+                chosen_action=decision.chosen_action,
+                policy_rule_id=decision.policy_rule_id,
+                decision_incident_id=decision.incident_id,
+                public_keys=settings.approver_public_keys,
+                require_signed=settings.require_signed_approvals,
+                max_age_s=settings.approval_max_age_s,
+            )
+        except ApprovalSignatureError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     try:
         executed = orchestrator.execute(decision, approval=body.approval)
@@ -192,6 +210,7 @@ async def execute_response(
                 approver_identity=body.approval.approver_identity,
                 decision=body.approval.decision,
                 timestamp=body.approval.timestamp,
+                signature=body.approval.signature,
             ),
         )
 

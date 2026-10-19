@@ -39,6 +39,7 @@ from app.api.dependencies import (
 from app.blockchain.hashing import hash_payload
 from app.blockchain.outbox import OutboxRepository, enqueue_incident
 from app.core.auth import Principal, get_current_principal, require_role
+from app.core.config import Settings, get_settings
 from app.iomt_simulator.registry import DeviceNotFoundError, DeviceRegistry
 from app.orchestration.orchestrator import CycleResult, IncidentOrchestrator
 from app.repositories.agent_traces import AgentTraceRecorder
@@ -160,6 +161,7 @@ async def investigate_incident(
     incident_repo: IncidentRepository = Depends(get_incident_repository),
     orchestrator: IncidentOrchestrator = Depends(get_incident_orchestrator),
     principal: Principal = Depends(get_current_principal),
+    settings: Settings = Depends(get_settings),
 ) -> CycleResultOut:
     """Runs the real multi-agent pipeline (`IncidentOrchestrator`,
     post-Phase-15) for this incident end to end: investigate -> threat
@@ -183,6 +185,13 @@ async def investigate_incident(
     # response AND fabricate the approval behind it -- the same sensitivity
     # as a human-supplied approval on /responses/executed, so it needs the
     # same 'approver' role.
+    if body.auto_approve and settings.require_signed_approvals:
+        # auto_approve fabricates its own approval record, which would sidestep the
+        # signature requirement on /responses/executed entirely.
+        raise HTTPException(
+            status_code=403,
+            detail="auto_approve is disabled while signed approvals are required",
+        )
     if body.auto_approve:
         require_role(principal, "approver")
 

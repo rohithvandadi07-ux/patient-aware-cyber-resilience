@@ -1,0 +1,6 @@
+# Signed approvals (M6). Added to COMPOSE_FILE in .env; values come from .env.
+services:
+  backend:
+    environment:
+      APPROVER_PUBLIC_KEYS: ${APPROVER_PUBLIC_KEYS:-}
+      REQUIRE_SIGNED_APPROVALS: ${REQUIRE_SIGNED_APPROVALS:-false}

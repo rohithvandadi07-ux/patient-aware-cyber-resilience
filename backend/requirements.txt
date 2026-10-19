@@ -36,3 +36,5 @@ joblib==1.4.2
 google-genai==2.30.0
 
 alembic==1.14.0
+
+cryptography>=43
