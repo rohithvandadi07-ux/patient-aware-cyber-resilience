@@ -22,8 +22,10 @@ handle.
 """
 
 import json
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
-from typing import Protocol, TypeVar
+from typing import ClassVar, Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -101,7 +103,7 @@ def generate_validated(
     `client.generate`, so the policy (and its test coverage) lives in exactly
     one place.
     """
-    raw_response = client.generate(prompt)
+    raw_response = _generate(client, prompt, output_schema)
     try:
         return _parse(raw_response, output_schema, expected_incident_id)
     except (ValidationError, json.JSONDecodeError, IncidentIdMismatchError) as first_error:
@@ -109,11 +111,20 @@ def generate_validated(
             f"{prompt}\n\nYour previous response failed schema validation with this error:\n"
             f"{first_error}\n\nRespond again with a corrected JSON object matching the schema."
         )
-        retry_response = client.generate(retry_prompt)
+        retry_response = _generate(client, retry_prompt, output_schema)
         try:
             return _parse(retry_response, output_schema, expected_incident_id)
         except (ValidationError, json.JSONDecodeError, IncidentIdMismatchError) as second_error:
             raise AgentFailure(agent_name, str(second_error)) from second_error
+
+
+def _generate(client, prompt, output_schema):
+    # Schema-aware clients (supports_schema=True, e.g. OllamaLLMClient) receive the Pydantic
+    # model so they can constrain decoding to it. Every other client keeps the original
+    # generate(prompt) call unchanged.
+    if getattr(client, "supports_schema", False):
+        return client.generate(prompt, output_schema=output_schema)
+    return client.generate(prompt)
 
 
 def _parse(raw_response: str, output_schema: type[T], expected_incident_id: str | None = None) -> T:
@@ -196,3 +207,63 @@ class GeminiLLMClient:
                 "nothing to validate against the output schema."
             )
         return response.text
+
+
+class _OllamaHTTPError(RuntimeError):
+    def __init__(self, status: int, body: str) -> None:
+        self.status = status
+        super().__init__(f"Ollama API error {status}: {body}")
+
+
+@dataclass
+class OllamaLLMClient:
+    # Local LLM through Ollama's /api/generate: no API key, and nothing leaves the machine.
+    # The agent's Pydantic JSON schema is sent as `format`, so decoding is constrained to
+    # that shape even for a small model. If the server rejects the schema grammar the call
+    # falls back to plain JSON mode. Validation and the retry-once policy still live in
+    # generate_validated, exactly as for every other client.
+    supports_schema: ClassVar[bool] = True
+
+    base_url: str = "http://localhost:11434"
+    model: str = "qwen2.5:3b"
+    timeout_s: float = 600.0
+    num_ctx: int = 8192
+    calls: list[str] = field(default_factory=list, repr=False)
+
+    def generate(self, prompt: str, output_schema: type[BaseModel] | None = None) -> str:
+        self.calls.append(prompt)
+        response_format = output_schema.model_json_schema() if output_schema is not None else "json"
+        try:
+            return self._post(prompt, response_format)
+        except _OllamaHTTPError as exc:
+            if response_format == "json" or exc.status not in (400, 500):
+                raise
+            return self._post(prompt, "json")
+
+    def _post(self, prompt: str, response_format) -> str:
+        body = json.dumps(
+            {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "format": response_format,
+                "options": {"temperature": 0, "num_ctx": self.num_ctx},
+            }
+        ).encode()
+        request = urllib.request.Request(
+            self.base_url.rstrip("/") + "/api/generate",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
+                payload = json.loads(response.read().decode())
+        except urllib.error.HTTPError as exc:
+            raise _OllamaHTTPError(exc.code, exc.read().decode(errors="replace")[:300]) from exc
+        except OSError as exc:
+            raise RuntimeError(f"Ollama call failed ({self.base_url}): {exc}") from exc
+        text = payload.get("response")
+        if not text:
+            raise RuntimeError("Ollama returned an empty response")
+        return text

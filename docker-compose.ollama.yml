@@ -1,0 +1,9 @@
+# Opt-in: run the backend's agents on a local Ollama server (no API key, nothing leaves the machine).
+services:
+  backend:
+    environment:
+      LLM_BACKEND: ollama
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

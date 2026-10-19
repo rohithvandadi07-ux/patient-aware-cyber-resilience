@@ -154,6 +154,19 @@ class Settings(BaseSettings):
         "gemini-2.0-flash (the API answers 404 and names gemini-3.8-flash as its replacement); "
         "override via GEMINI_MODEL if that model is retired in turn.",
     )
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        description="Ollama server URL for llm_backend='ollama' (env OLLAMA_BASE_URL). Inside "
+        "docker-compose the host's Ollama is http://host.docker.internal:11434.",
+    )
+    ollama_model: str = Field(
+        default="qwen2.5:3b",
+        description="Ollama model tag (env OLLAMA_MODEL). Must already be pulled: ollama pull <tag>.",
+    )
+    ollama_timeout_s: float = Field(
+        default=600.0,
+        description="Per-call timeout for Ollama (env OLLAMA_TIMEOUT_S). CPU-only inference is slow.",
+    )
 
     # --- Request limits (post-Phase-15, opt-in) ---
     rate_limit_per_minute: int = Field(

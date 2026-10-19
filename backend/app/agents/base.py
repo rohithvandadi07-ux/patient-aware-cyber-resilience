@@ -99,6 +99,11 @@ def run_agent_call(
                 "agent_output_before_grounding": output_payload,
             }
             output = grounded
+        elif grounded != output:
+            # Enrichment from the system's own records (e.g. a patient's live acuity) where the
+            # agent got nothing wrong: still use the grounded output, never the raw one.
+            output_payload = grounded.model_dump(mode="json")
+            output = grounded
 
     toolkit.trace_recorder.record_success(
         incident_id=incident_id,

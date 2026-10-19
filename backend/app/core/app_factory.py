@@ -205,9 +205,15 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
     # swap) if `llm_backend="gemini"` is requested but no API key is
     # configured -- constructing a `GeminiLLMClient` that would fail on its
     # very first call is worse than running mock and saying so.
-    from app.agents.llm_client import GeminiLLMClient, MockLLMClient
+    from app.agents.llm_client import GeminiLLMClient, MockLLMClient, OllamaLLMClient
 
-    if settings.llm_backend == "gemini" and settings.gemini_api_key:
+    if settings.llm_backend == "ollama":
+        app.state.llm_client = OllamaLLMClient(
+            base_url=settings.ollama_base_url,
+            model=settings.ollama_model,
+            timeout_s=settings.ollama_timeout_s,
+        )
+    elif settings.llm_backend == "gemini" and settings.gemini_api_key:
         app.state.llm_client = GeminiLLMClient(
             api_key=settings.gemini_api_key, model=settings.gemini_model
         )

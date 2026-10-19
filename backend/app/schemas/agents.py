@@ -9,6 +9,7 @@ act.
 """
 
 from pydantic import BaseModel, Field
+from pydantic import model_validator
 
 from app.schemas.enums import AttackCategory, DeviceCriticality, ImpactLevel, ResponseActionCategory
 from app.schemas.patient import AcuityBand
@@ -86,6 +87,20 @@ class ProposedResponse(BaseModel):
     rationale: str = Field(
         description="Recommendation, not an instruction — the Policy Engine decides routing."
     )
+
+    @model_validator(mode="after")
+    def _recommended_action_is_a_candidate(self) -> "ProposedResponse":
+        # The Risk Engine scores only the candidate actions, so a recommendation outside that
+        # list can never be routed. Reject it here: it is retried once with this message shown
+        # to the agent, then the incident stalls instead of proceeding on inconsistent output.
+        candidates = {c.action_category for c in self.candidate_actions}
+        if self.recommended_action not in candidates:
+            raise ValueError(
+                f"recommended_action {self.recommended_action.value!r} is not one of the "
+                f"candidate_actions {sorted(a.value for a in candidates)}; "
+                "recommend one of the candidate actions"
+            )
+        return self
 
 
 class RecoveryResult(BaseModel):
