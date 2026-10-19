@@ -22,6 +22,7 @@ from app.blockchain.fabric_client import FabricClient
 from app.blockchain.outbox import OutboxRepository
 from app.blockchain.outbox_worker import OutboxWorker
 from app.core.config import Settings, get_settings
+from app.iomt_simulator.patients import PatientRegistry
 from app.iomt_simulator.registry import DeviceRegistry
 from app.orchestration.orchestrator import IncidentOrchestrator
 from app.policy_engine.engine import PolicyEngine
@@ -148,3 +149,7 @@ def get_incident_orchestrator(request: Request) -> IncidentOrchestrator:
         risk_model=app_state.risk_model,
         policy_engine=get_policy_engine(get_settings()),
     )
+
+
+def get_patient_registry(request: Request) -> PatientRegistry:
+    return request.app.state.patient_registry

@@ -122,6 +122,9 @@ def _register_state(app: FastAPI, settings: Settings) -> None:
     app.state.settings = settings
 
     app.state.device_registry = build_default_fleet()
+    from app.iomt_simulator.patients import build_default_patients
+
+    app.state.patient_registry = build_default_patients()
 
     if settings.repository_backend == "postgres":
         # Real Postgres required (see `app/core/db.py` for the sync-driver
@@ -242,6 +245,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.events import router as events_router
     from app.api.health import router as health_router
     from app.api.incidents import router as incidents_router
+    from app.api.patients import router as patients_router
     from app.api.recovery import router as recovery_router
     from app.api.responses import router as responses_router
     from app.api.risk_assessments import router as risk_assessments_router
@@ -256,6 +260,7 @@ def _register_routers(app: FastAPI) -> None:
 
     app.include_router(health_router)
     app.include_router(devices_router, dependencies=_auth)
+    app.include_router(patients_router, dependencies=_auth)
     app.include_router(detections_router, dependencies=_auth)
     app.include_router(telemetry_router, dependencies=_auth)
     app.include_router(events_router, dependencies=_auth)
