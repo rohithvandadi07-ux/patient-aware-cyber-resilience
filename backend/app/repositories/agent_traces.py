@@ -77,6 +77,9 @@ class AgentTraceRecorder:
     def all_traces(self) -> list[AgentTrace]:
         return list(self._traces)
 
+    def clear(self) -> None:
+        self._traces.clear()
+
 
 def _trace_from_row(row: AgentTraceORM) -> AgentTrace:
     return AgentTrace(
@@ -100,6 +103,10 @@ class PostgresAgentTraceRecorder:
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def clear(self) -> None:
+        with session_scope(self._session_factory) as session:
+            session.query(AgentTraceORM).delete()
 
     def record_success(
         self, incident_id: str, agent_name: str, input_payload: dict, output_payload: dict

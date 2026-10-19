@@ -247,6 +247,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.agents import router as agents_router
     from app.api.blockchain_audit import router as blockchain_audit_router
     from app.api.detections import router as detections_router
+    from app.api.demo import router as demo_router
     from app.api.devices import router as devices_router
     from app.api.events import router as events_router
     from app.api.health import router as health_router
@@ -266,6 +267,7 @@ def _register_routers(app: FastAPI) -> None:
     _auth = [Depends(get_current_principal)]
 
     app.include_router(health_router)
+    app.include_router(demo_router, dependencies=_auth)
     app.include_router(devices_router, dependencies=_auth)
     app.include_router(patients_router, dependencies=_auth)
     app.include_router(detections_router, dependencies=_auth)

@@ -97,6 +97,12 @@ class Settings(BaseSettings):
         "from a registered approver, and auto-approve is refused. Off by default so existing "
         "deployments are unchanged; a signature that is present is verified either way.",
     )
+    demo_mode: bool = Field(
+        default=False,
+        description="Enables POST /demo/reset (wipes incidents, responses, audit outbox, device and "
+        "patient state). Off by default; /demo/reset returns 404 when off so a real deployment "
+        "cannot wipe its own records.",
+    )
     approval_max_age_s: float = Field(
         default=300.0,
         gt=0.0,

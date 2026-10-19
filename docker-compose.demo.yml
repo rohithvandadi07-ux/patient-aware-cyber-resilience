@@ -1,0 +1,6 @@
+# Demo mode (M9). Added to COMPOSE_FILE in .env; value comes from .env.
+# Enables POST /demo/reset. Leave DEMO_MODE=false (or unset) for any real deployment.
+services:
+  backend:
+    environment:
+      DEMO_MODE: ${DEMO_MODE:-false}

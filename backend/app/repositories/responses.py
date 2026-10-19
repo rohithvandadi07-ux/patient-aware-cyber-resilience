@@ -65,6 +65,9 @@ class ProposedResponseRepository:
         something already absent is not an error."""
         self._decisions.pop(incident_id, None)
 
+    def clear(self) -> None:
+        self._decisions.clear()
+
 
 class ExecutedResponseRepository:
     """Append-only log of every `ExecutedResponse` the Response Orchestrator
@@ -85,6 +88,9 @@ class ExecutedResponseRepository:
 
     def list_for_incident(self, incident_id: str) -> list[ExecutedResponse]:
         return [e for e in self._executed if e.incident_id == incident_id]
+
+    def clear(self) -> None:
+        self._executed.clear()
 
 
 def _decision_from_row(row: ProposedResponseORM) -> PolicyDecision:
@@ -143,6 +149,10 @@ class PostgresProposedResponseRepository:
             if row is not None:
                 session.delete(row)
 
+    def clear(self) -> None:
+        with session_scope(self._session_factory) as session:
+            session.query(ProposedResponseORM).delete()
+
 
 def _executed_from_row(row: ExecutedResponseORM) -> ExecutedResponse:
     return ExecutedResponse(
@@ -191,3 +201,7 @@ class PostgresExecutedResponseRepository:
                 .all()
             )
             return [_executed_from_row(row) for row in rows]
+
+    def clear(self) -> None:
+        with session_scope(self._session_factory) as session:
+            session.query(ExecutedResponseORM).delete()

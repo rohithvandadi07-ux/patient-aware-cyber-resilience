@@ -65,6 +65,9 @@ class IncidentRepository:
     def list_all(self) -> list[Incident]:
         return list(self._incidents.values())
 
+    def clear(self) -> None:
+        self._incidents.clear()
+
 
 def _incident_from_row(row: IncidentORM) -> Incident:
     return Incident(
@@ -88,6 +91,10 @@ class PostgresIncidentRepository:
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def clear(self) -> None:
+        with session_scope(self._session_factory) as session:
+            session.query(IncidentORM).delete()
 
     def create(self, incident_id: str, device_id: str) -> Incident:
         now = datetime.now(UTC)
