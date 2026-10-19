@@ -3,6 +3,22 @@ import { deriveProposeResponseRequest } from '../api/proposeResponseFromTraces'
 import { useExecuteResponseMutation, useExecutedResponses, useProposeResponseMutation, useProposedResponse } from '../api/queries'
 import type { AgentTrace, ApprovalDecision, RiskScore } from '../api/types'
 
+/** The connected patient's acuity as recorded by the Healthcare Context
+ * Agent (grounded server-side from the patient registry). Read from the
+ * traces this view already has -- no extra request. */
+function connectedPatient(traces: AgentTrace[]): { acuity: string; news2: number | null } | null {
+  for (const trace of [...traces].reverse()) {
+    const payload = trace.output_payload
+    if (!trace.succeeded || !payload) continue
+    const acuity = payload['patient_acuity']
+    if (typeof acuity === 'string') {
+      const news2 = payload['news2_score']
+      return { acuity, news2: typeof news2 === 'number' ? news2 : null }
+    }
+  }
+  return null
+}
+
 function formatTimestamp(iso: string): string {
   const date = new Date(iso)
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString()
@@ -39,6 +55,7 @@ export function ResponsePanel({
   const [notes, setNotes] = useState('')
 
   const derivation = deriveProposeResponseRequest(traces, riskScore)
+  const patient = connectedPatient(traces)
 
   function handlePropose() {
     if (!derivation.request) return
@@ -68,6 +85,18 @@ export function ResponsePanel({
 
         {proposedQuery.isSuccess && proposedQuery.data && (
           <div className="space-y-2 text-sm">
+            {patient && (
+              <p
+                data-testid="connected-patient"
+                className={`rounded px-2 py-1 text-xs font-medium ${
+                  patient.acuity === 'high'
+                    ? 'bg-danger-100 text-danger-700 dark:bg-red-950 dark:text-red-300'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                }`}
+              >
+                {`Connected patient: ${patient.acuity} acuity${patient.news2 !== null ? ` (NEWS2 ${patient.news2})` : ''}`}
+              </p>
+            )}
             <p>
               <span className="font-medium text-gray-500 dark:text-gray-400">Chosen action: </span>
               {proposedQuery.data.chosen_action}

@@ -276,3 +276,29 @@ export interface ExecuteResponseRequest {
   incident_id: string
   approval?: ApprovalRecord | null
 }
+
+// --- app/api/patients.py: synthetic patients + NEWS2 acuity ---
+
+export type AcuityBand = 'low' | 'medium' | 'high'
+
+export interface PatientVitals {
+  respiration_rate: number
+  spo2: number
+  on_supplemental_oxygen: boolean
+  systolic_bp: number
+  pulse: number
+  consciousness: 'alert' | 'cvpu'
+  temperature_c: number
+}
+
+export interface PatientState {
+  patient_id: string
+  device_ids: string[]
+  profile: string
+  simulated_minute: number
+  vitals: PatientVitals
+  news2_score: number
+  score_breakdown: Record<string, number>
+  single_parameter_red_flag: boolean
+  acuity_band: AcuityBand
+}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import { useDevices, useIncidents, useTelemetry } from '../api/queries'
+import { useAdvancePatientClockMutation, useDevices, useIncidents, usePatients, useTelemetry } from '../api/queries'
 import { latestReadingByDevice } from '../api/telemetryLatest'
-import type { DeviceCriticality, Incident } from '../api/types'
+import type { AcuityBand, DeviceCriticality, Incident, PatientState } from '../api/types'
 import { Panel } from '../components/Panel'
 
 /**
@@ -44,21 +44,53 @@ function incidentsForDevice(incidents: Incident[], deviceId: string): Incident[]
   return incidents.filter((incident) => incident.device_id === deviceId)
 }
 
+const ACUITY_STYLES: Record<AcuityBand, string> = {
+  low: 'bg-clinical-100 text-clinical-700 dark:bg-clinical-900 dark:text-clinical-300',
+  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
+  high: 'bg-danger-100 text-danger-700 dark:bg-red-950 dark:text-red-300',
+}
+
+function patientForDevice(patients: PatientState[], deviceId: string): PatientState | undefined {
+  return patients.find((patient) => patient.device_ids.includes(deviceId))
+}
+
 export function Fleet() {
   const devicesQuery = useDevices()
   const telemetryQuery = useTelemetry()
   const incidentsQuery = useIncidents()
+  const patientsQuery = usePatients()
+  const advanceClock = useAdvancePatientClockMutation()
 
   const isLoading = devicesQuery.isLoading || telemetryQuery.isLoading || incidentsQuery.isLoading
   const firstError = devicesQuery.error ?? telemetryQuery.error ?? incidentsQuery.error
 
   const devices = devicesQuery.data ?? []
   const incidents = incidentsQuery.data ?? []
+  const patients = patientsQuery.data ?? []
   const latestByDevice = latestReadingByDevice(telemetryQuery.data ?? [])
 
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">IoMT Fleet</h1>
+
+      {patients.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-gray-200 p-3 text-sm dark:border-gray-800">
+          <span className="text-gray-600 dark:text-gray-300">
+            Simulated patient time: minute {patients[0].simulated_minute}
+          </span>
+          <button
+            type="button"
+            onClick={() => advanceClock.mutate(30)}
+            disabled={advanceClock.isPending}
+            className="rounded-md bg-cyber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyber-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {advanceClock.isPending ? 'Advancing…' : 'Advance patient clock +30 min'}
+          </button>
+          {advanceClock.isError && (
+            <span className="text-xs text-danger-600">Could not advance the patient clock.</span>
+          )}
+        </div>
+      )}
 
       {isLoading && <p className="text-sm text-gray-500">Loading fleet…</p>}
       {firstError && (
@@ -76,6 +108,7 @@ export function Fleet() {
               {devices.map((device) => {
                 const latest = latestByDevice.get(device.device_id)
                 const deviceIncidents = incidentsForDevice(incidents, device.device_id)
+                const patient = patientForDevice(patients, device.device_id)
                 return (
                   <article
                     key={device.device_id}
@@ -115,6 +148,23 @@ export function Fleet() {
                       <div>
                         <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Synthetic patient</dt>
                         <dd>{device.synthetic_patient_id ?? <span className="italic text-gray-400">none</span>}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Patient condition</dt>
+                        <dd>
+                          {patient ? (
+                            <span className="flex items-center gap-2">
+                              <span>NEWS2 {patient.news2_score}</span>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ACUITY_STYLES[patient.acuity_band]}`}
+                              >
+                                {patient.acuity_band} acuity
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="italic text-gray-400">no patient linked</span>
+                          )}
+                        </dd>
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Latest telemetry</dt>

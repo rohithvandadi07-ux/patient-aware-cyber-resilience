@@ -21,6 +21,7 @@ import type {
   NetworkEvent,
   OutboxEntry,
   OutboxStatus,
+  PatientState,
   PolicyDecision,
   ProposeResponseRequest,
   RecoveryResult,
@@ -173,3 +174,10 @@ export const getAuditTrailForIncident = (incidentId: string): Promise<OutboxEntr
 
 export const processPendingOutboxEntries = (): Promise<OutboxEntry[]> =>
   request('/blockchain/audit/process', { method: 'POST' })
+
+// --- /patients ---
+
+export const listPatients = (): Promise<PatientState[]> => request('/patients')
+
+export const advancePatientClock = (minutes: number): Promise<unknown> =>
+  request('/patients/clock/advance', { method: 'POST', body: JSON.stringify({ minutes }) })

@@ -34,6 +34,7 @@ export const queryKeys = {
   allRecoveryResults: ['recovery', 'all'] as const,
   auditTrail: (incidentId: string) => ['blockchain', 'audit', incidentId] as const,
   allAuditEntries: ['blockchain', 'audit', 'all'] as const,
+  patients: ['patients'] as const,
 }
 
 export function useDevices() {
@@ -216,5 +217,25 @@ export function useProcessOutboxMutation() {
   return useMutation({
     mutationFn: client.processPendingOutboxEntries,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['blockchain', 'audit'] }),
+  })
+}
+
+/** Live synthetic-patient state (vitals, NEWS2, acuity band). Polled so the
+ * Fleet view follows the simulated clock without a manual refresh. */
+export function usePatients() {
+  return useQuery({
+    queryKey: queryKeys.patients,
+    queryFn: client.listPatients,
+    refetchInterval: 10000,
+  })
+}
+
+export function useAdvancePatientClockMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (minutes: number) => client.advancePatientClock(minutes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients })
+    },
   })
 }
