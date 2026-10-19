@@ -240,3 +240,22 @@ export function useAdvancePatientClockMutation() {
     },
   })
 }
+
+export function useDemoStatus() {
+  return useQuery({
+    queryKey: ['demo', 'status'],
+    queryFn: client.getDemoStatus,
+    retry: false,
+    staleTime: 60_000,
+  })
+}
+
+export function useDemoResetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => client.resetDemo(),
+    onSuccess: () => {
+      queryClient.invalidateQueries()
+    },
+  })
+}

@@ -11,6 +11,10 @@
 
 import type {
   AgentTrace,
+  AlertBatchRequest,
+  AlertBatchResponse,
+  DemoResetResult,
+  DemoStatus,
   DetectionEvent,
   DeviceState,
   ExecuteResponseRequest,
@@ -181,3 +185,14 @@ export const listPatients = (): Promise<PatientState[]> => request('/patients')
 
 export const advancePatientClock = (minutes: number): Promise<unknown> =>
   request('/patients/clock/advance', { method: 'POST', body: JSON.stringify({ minutes }) })
+
+// --- /ingest ---
+
+export const ingestAlerts = (body: AlertBatchRequest): Promise<AlertBatchResponse> =>
+  request('/ingest/alerts', { method: 'POST', body: JSON.stringify(body) })
+
+// --- /demo ---
+
+export const getDemoStatus = (): Promise<DemoStatus> => request('/demo/status')
+
+export const resetDemo = (): Promise<DemoResetResult> => request('/demo/reset', { method: 'POST' })

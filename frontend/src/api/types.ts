@@ -311,3 +311,38 @@ export interface PatientState {
   single_parameter_red_flag: boolean
   acuity_band: AcuityBand
 }
+
+// --- app/api/demo.py + app/api/ingest.py ---
+
+export interface DemoStatus {
+  enabled: boolean
+}
+
+export interface DemoResetResult {
+  incidents_removed: number
+  proposed_removed: number
+  executed_removed: number
+  traces_removed: number
+}
+
+export interface AlertBatchRequest {
+  source: 'generic' | 'suricata_eve' | 'wazuh'
+  device_id?: string | null
+  alerts: Record<string, unknown>[]
+}
+
+export interface AlertOutcome {
+  index: number
+  status: 'accepted' | 'ignored' | 'rejected'
+  device_id?: string | null
+  attack_type?: string | null
+  confidence?: number | null
+  incident_id?: string | null
+  reason?: string | null
+}
+
+export interface AlertBatchResponse {
+  source: string
+  outcomes: AlertOutcome[]
+  incident_ids: string[]
+}

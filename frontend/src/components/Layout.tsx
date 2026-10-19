@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useDemoStatus } from '../api/queries'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Overview' },
@@ -9,6 +10,10 @@ const NAV_ITEMS = [
 ] as const
 
 export function Layout() {
+  const demo = useDemoStatus()
+  const items: readonly { to: string; label: string }[] = demo.data?.enabled
+    ? [...NAV_ITEMS, { to: '/demo', label: 'Demo' }]
+    : NAV_ITEMS
   return (
     <div className="min-h-svh bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -17,7 +22,7 @@ export function Layout() {
             Patient-Aware Cyber Resilience <span className="text-gray-400 dark:text-gray-500">· SOC Dashboard</span>
           </Link>
           <nav aria-label="Primary" className="flex flex-wrap gap-1 text-sm">
-            {NAV_ITEMS.map((item) => (
+            {items.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

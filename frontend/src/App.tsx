@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Analytics } from './routes/Analytics'
+import { Demo } from './routes/Demo'
 import { Fleet } from './routes/Fleet'
 import { IncidentDetail } from './routes/IncidentDetail'
 import { IncidentList } from './routes/IncidentList'
@@ -22,6 +23,7 @@ function App() {
             <Route path="fleet" element={<Fleet />} />
             <Route path="threat-monitor" element={<ThreatMonitor />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="demo" element={<Demo />} />
           </Route>
         </Routes>
       </BrowserRouter>
