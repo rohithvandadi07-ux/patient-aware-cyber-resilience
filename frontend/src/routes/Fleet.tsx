@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAdvancePatientClockMutation, useDevices, useIncidents, usePatients, useTelemetry } from '../api/queries'
 import { latestReadingByDevice } from '../api/telemetryLatest'
-import type { AcuityBand, DeviceCriticality, Incident, PatientState } from '../api/types'
+import type { AcuityBand, DeviceCriticality, DeviceState, Incident, PatientState } from '../api/types'
 import { Panel } from '../components/Panel'
 
 /**
@@ -52,6 +52,17 @@ const ACUITY_STYLES: Record<AcuityBand, string> = {
 
 function patientForDevice(patients: PatientState[], deviceId: string): PatientState | undefined {
   return patients.find((patient) => patient.device_ids.includes(deviceId))
+}
+
+function resilienceSummary(device: DeviceState): string {
+  const sessions = device.active_sessions?.length ?? 0
+  const credential = `v${device.credential_version ?? 1}`
+  const backup = device.backup_active ? 'active' : device.backup_available ? 'available' : 'none'
+  let standby = 'none'
+  if (device.standby_unit_id) {
+    standby = device.serving_unit === device.standby_unit_id ? `serving ${device.standby_unit_id}` : device.standby_unit_id
+  }
+  return `sessions ${sessions} · credential ${credential} · backup ${backup} · standby ${standby}`
 }
 
 export function Fleet() {
@@ -165,6 +176,10 @@ export function Fleet() {
                             <span className="italic text-gray-400">no patient linked</span>
                           )}
                         </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Response state</dt>
+                        <dd data-testid={`resilience-${device.device_id}`}>{resilienceSummary(device)}</dd>
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Latest telemetry</dt>

@@ -189,6 +189,7 @@ export function useExecuteResponseMutation() {
   return useMutation({
     mutationFn: (body: ExecuteResponseRequest) => client.executeResponse(body),
     onSuccess: (executed) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.devices })
       queryClient.invalidateQueries({ queryKey: queryKeys.proposedResponse(executed.incident_id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.executedResponses(executed.incident_id) })
       queryClient.invalidateQueries({ queryKey: queryKeys.auditTrail(executed.incident_id) })

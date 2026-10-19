@@ -76,6 +76,13 @@ export interface DeviceState {
   synthetic_patient_id: string | null
   operational_state: OperationalState
   network_state: string
+  // Modelled resilience state (simulated effects, not real infrastructure).
+  active_sessions?: string[]
+  credential_version?: number
+  backup_available?: boolean
+  backup_active?: boolean
+  standby_unit_id?: string | null
+  serving_unit?: string | null
 }
 
 // --- app/schemas/telemetry.py / events.py ---
