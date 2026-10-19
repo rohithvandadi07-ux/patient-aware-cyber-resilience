@@ -51,3 +51,11 @@ class DeviceState(BaseModel):
     )
     operational_state: OperationalState
     network_state: str = Field(description="e.g. 'connected', 'isolated', 'degraded'.")
+    active_sessions: list[str] = Field(default_factory=list, description="Simulated session IDs.")
+    credential_version: int = 1
+    backup_available: bool = False
+    backup_active: bool = False
+    standby_unit_id: str | None = None
+    serving_unit: str | None = Field(
+        default=None, description="Standby unit now serving, after a FAILOVER; null otherwise."
+    )

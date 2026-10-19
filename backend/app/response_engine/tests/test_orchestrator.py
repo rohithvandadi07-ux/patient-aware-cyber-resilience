@@ -189,13 +189,19 @@ def test_restart_service_resets_device_to_idle_and_connected(orchestrator, regis
     "action",
     [
         ResponseActionCategory.REVOKE_SESSION,
-        ResponseActionCategory.ROTATE_CREDENTIALS,
         ResponseActionCategory.ACTIVATE_BACKUP,
         ResponseActionCategory.FAILOVER,
     ],
 )
-def test_actions_with_no_simulator_mechanism_raise_not_implemented(orchestrator, action):
-    decision = _decision("incident-pump", action, False)
+def test_resilience_actions_without_their_precondition_are_refused(action):
+    # M4: these actions now execute against modelled state, so a device with nothing to
+    # revoke / no backup / no standby must be refused, never recorded as a success.
+    from app.iomt_simulator.device import ActionPreconditionError, InfusionPump
+    from app.response_engine.orchestrator import _apply_action
+    from app.schemas.enums import DeviceCriticality
 
-    with pytest.raises(NotImplementedError, match=action.value):
-        orchestrator.execute(decision)
+    bare = InfusionPump(
+        device_id="pump-bare", criticality=DeviceCriticality.LOW, patient_dependency=False
+    )
+    with pytest.raises(ActionPreconditionError):
+        _apply_action(bare, action)

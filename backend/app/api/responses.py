@@ -53,6 +53,7 @@ from app.schemas.blockchain import ApprovalProvenance, DecisionProvenance, Respo
 from app.schemas.policy import PolicyDecision
 from app.schemas.response import ApprovalRecord, ExecutedResponse
 from app.schemas.risk import RiskScore
+from app.iomt_simulator.device import ActionPreconditionError
 
 router = APIRouter(prefix="/responses", tags=["responses"])
 
@@ -160,6 +161,10 @@ async def execute_response(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (IncidentNotFoundError, DeviceNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ActionPreconditionError as exc:
+        # The action cannot take effect (nothing to revoke / no backup / no standby): the
+        # decision stays pending and nothing is recorded as executed.
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except NotImplementedError as exc:
         # A real, honest gap -- see orchestrator.py's module docstring: no
         # session/credential/backup/failover mechanism exists in the

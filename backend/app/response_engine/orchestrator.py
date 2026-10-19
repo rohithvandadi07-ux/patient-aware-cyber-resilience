@@ -17,19 +17,13 @@ codebase that calls a `SimulatedDevice` mutation method (`isolate`,
 `power_off`, `set_operational_state`) on the strength of a `PolicyDecision`
 -- no agent, and no other service, holds that call.
 
-**Honest execution scope (anti-fabrication):** the simulator (Phase 2,
-`app/iomt_simulator/device.py`) has a real mechanism for exactly three
-things: cutting network access (`isolate`), powering off (`power_off`,
-added in Phase 6 alongside `OperationalState.OFF`), and resetting to normal
-operation. It has no concept of a session, a credential, a backup, or a
-failover target anywhere in its state model. Rather than inventing one here
-as a side effect of wiring the orchestrator -- which would mean
-`REVOKE_SESSION`/`ROTATE_CREDENTIALS`/`ACTIVATE_BACKUP`/`FAILOVER` silently
-"execute" against nothing real -- `_apply_action` below raises
-`NotImplementedError` for those four categories, naming exactly what
-mechanism is missing. This is the same stub-rather-than-fabricate pattern as
-`training.py`'s `load_real_dataset` and Phase 4's original
-`AgentToolkit.evaluate_policy` stub.
+**Execution scope (simulated effects):** the simulator changes real modelled state for
+every category: network isolation and power (`isolate`, `power_off`) and, since M4, sessions,
+a credential version, a backup path and a standby unit (`revoke_sessions`,
+`rotate_credentials`, `activate_backup`, `fail_over`). These are simulated effects, never
+real infrastructure. When an action's precondition is not met (no session to revoke, no
+backup, no standby) the simulator raises `ActionPreconditionError`; the API answers 409 and
+the decision stays pending, so a response that changed nothing is never recorded as success.
 
 **Why the five isolate-family categories collapse to one simulator call:**
 `BLOCK_TRAFFIC`, `RESTRICT_COMMUNICATION`, `ISOLATE_NON_CRITICAL`,
@@ -67,12 +61,11 @@ _ISOLATION_FAMILY = frozenset(
     }
 )
 
-# Categories with no corresponding mechanism anywhere in the simulator's
-# state model (no session, credential, backup, or failover concept exists).
-# Listed explicitly, rather than reached via an `else` branch, so this set
-# is itself the honest inventory of what this orchestrator cannot yet do --
-# reviewable without reading `_apply_action`'s control flow.
-_NO_SIMULATOR_MECHANISM_ACTIONS = frozenset(
+# The four resilience actions, executed against the simulator's modelled
+# session / credential / backup / standby state (M4). Listed explicitly,
+# rather than reached via an `else` branch, so the exhaustiveness assertion
+# below covers them.
+_RESILIENCE_ACTIONS = frozenset(
     {
         ResponseActionCategory.REVOKE_SESSION,
         ResponseActionCategory.ROTATE_CREDENTIALS,
@@ -89,7 +82,7 @@ _NO_SIMULATOR_MECHANISM_ACTIONS = frozenset(
 assert (
     {ResponseActionCategory.SHUTDOWN, ResponseActionCategory.RESTART_SERVICE}
     | _ISOLATION_FAMILY
-    | _NO_SIMULATOR_MECHANISM_ACTIONS
+    | _RESILIENCE_ACTIONS
 ) == set(ResponseActionCategory), "every ResponseActionCategory must be classified in orchestrator.py"
 
 
@@ -186,9 +179,9 @@ class ResponseOrchestrator:
 
 
 def _apply_action(device: SimulatedDevice, action_category: ResponseActionCategory) -> None:
-    """The real simulator mutation for one cleared action, or a clear
-    `NotImplementedError` naming the missing mechanism. See the module
-    docstring for why each branch maps the way it does."""
+    """The real simulator mutation for one cleared action. A resilience action whose
+    precondition is not met raises `ActionPreconditionError` (see the simulator). See
+    the module docstring for why each branch maps the way it does."""
     if action_category == ResponseActionCategory.SHUTDOWN:
         device.power_off()
         return
@@ -205,11 +198,14 @@ def _apply_action(device: SimulatedDevice, action_category: ResponseActionCatego
         device.set_operational_state(OperationalState.IDLE)
         return
 
-    # The module-level assertion above guarantees action_category is in
-    # _NO_SIMULATOR_MECHANISM_ACTIONS at this point -- no catch-all needed.
-    raise NotImplementedError(
-        f"{action_category.value} has no corresponding mechanism in the simulator's state "
-        "model (no session, credential, backup, or failover concept exists in "
-        "app/iomt_simulator/device.py) -- not something to fake here. See this module's "
-        "docstring."
-    )
+    # The module-level assertion above guarantees the remaining categories are the four
+    # resilience actions. Each simulator method checks its own precondition and raises
+    # ActionPreconditionError rather than pretending to succeed.
+    if action_category == ResponseActionCategory.REVOKE_SESSION:
+        device.revoke_sessions()
+    elif action_category == ResponseActionCategory.ROTATE_CREDENTIALS:
+        device.rotate_credentials()
+    elif action_category == ResponseActionCategory.ACTIVATE_BACKUP:
+        device.activate_backup()
+    else:  # FAILOVER
+        device.fail_over()

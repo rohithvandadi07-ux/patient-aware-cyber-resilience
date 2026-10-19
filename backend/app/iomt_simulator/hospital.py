@@ -27,6 +27,7 @@ def build_default_fleet() -> DeviceRegistry:
             device_id="infusion-pump-01",
             criticality=DeviceCriticality.LOW,
             patient_dependency=False,
+            active_sessions=["sess-pump-01-a"],
         )
     )
     registry.register(
@@ -35,6 +36,9 @@ def build_default_fleet() -> DeviceRegistry:
             criticality=DeviceCriticality.HIGH,
             patient_dependency=True,
             synthetic_patient_id="synthetic-patient-001",
+            active_sessions=["sess-ventilator-01-a", "sess-ventilator-01-b"],
+            backup_available=True,
+            standby_unit_id="ventilator-01-standby",
         )
     )
     registry.register(
@@ -43,6 +47,8 @@ def build_default_fleet() -> DeviceRegistry:
             criticality=DeviceCriticality.MEDIUM,
             patient_dependency=True,
             synthetic_patient_id="synthetic-patient-002",
+            active_sessions=["sess-ecg-01-a"],
+            backup_available=True,
         )
     )
 

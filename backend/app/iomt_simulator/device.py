@@ -20,6 +20,12 @@ from app.schemas.device import DeviceState, DeviceType, OperationalState
 from app.schemas.enums import DeviceCriticality
 
 
+class ActionPreconditionError(Exception):
+    """A response action cannot take effect because the thing it acts on does not exist
+    (no active session to revoke, no backup to activate, no standby to fail over to).
+    Raised instead of reporting a success that changed nothing."""
+
+
 @dataclass
 class SimulatedDevice:
     """Base state machine for a simulated IoMT device.
@@ -37,6 +43,15 @@ class SimulatedDevice:
     synthetic_patient_id: str | None = None
     operational_state: OperationalState = OperationalState.IDLE
     network_state: str = "connected"
+
+    # Modelled resilience state (M4). Simulated effects, not real infrastructure: they give
+    # REVOKE_SESSION / ROTATE_CREDENTIALS / ACTIVATE_BACKUP / FAILOVER something real to change.
+    active_sessions: list[str] = field(default_factory=list)
+    credential_version: int = 1
+    backup_available: bool = False
+    backup_active: bool = False
+    standby_unit_id: str | None = None
+    serving_unit: str | None = None
 
     # Internal transition log, useful for scenario/test assertions without
     # needing a separate event store during Phase 2. Not settable by callers.
@@ -82,6 +97,41 @@ class SimulatedDevice:
         self.set_network_state("offline")
         self.set_operational_state(OperationalState.OFF)
 
+    def revoke_sessions(self) -> int:
+        # Terminate every active session. Refuses, rather than reporting success, when
+        # there is nothing to revoke.
+        if not self.active_sessions:
+            raise ActionPreconditionError(f"{self.device_id}: no active sessions to revoke")
+        revoked = len(self.active_sessions)
+        self.active_sessions.clear()
+        return revoked
+
+    def rotate_credentials(self) -> int:
+        # New credential version. Sessions established with the old credential end, which is
+        # the second-order effect the Risk Engine's caution margin refers to.
+        self.credential_version += 1
+        self.active_sessions.clear()
+        return self.credential_version
+
+    def activate_backup(self) -> None:
+        if not self.backup_available:
+            raise ActionPreconditionError(f"{self.device_id}: no backup path is available to activate")
+        if self.backup_active:
+            raise ActionPreconditionError(f"{self.device_id}: the backup path is already active")
+        self.backup_active = True
+
+    def fail_over(self) -> str:
+        # Move service to the standby unit and take this unit out of the clinical path.
+        if self.standby_unit_id is None:
+            raise ActionPreconditionError(f"{self.device_id}: no standby unit is configured")
+        if self.serving_unit is not None:
+            raise ActionPreconditionError(
+                f"{self.device_id}: already failed over to {self.serving_unit}"
+            )
+        self.serving_unit = self.standby_unit_id
+        self.isolate()
+        return self.serving_unit
+
     def snapshot(self) -> DeviceState:
         """Convert current state to the shared DeviceState schema."""
         return DeviceState(
@@ -92,6 +142,12 @@ class SimulatedDevice:
             synthetic_patient_id=self.synthetic_patient_id,
             operational_state=self.operational_state,
             network_state=self.network_state,
+            active_sessions=list(self.active_sessions),
+            credential_version=self.credential_version,
+            backup_available=self.backup_available,
+            backup_active=self.backup_active,
+            standby_unit_id=self.standby_unit_id,
+            serving_unit=self.serving_unit,
         )
 
 
