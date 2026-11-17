@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/fleet', label: 'Fleet' },
   { to: '/threat-monitor', label: 'Threat Monitor' },
   { to: '/analytics', label: 'Analytics' },
+  { to: '/policy', label: 'Policy' },
 ] as const
 
 export function Layout() {

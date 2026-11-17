@@ -58,7 +58,13 @@ export type IncidentStatus =
   | 'response_planning_stalled'
   | 'recovery_verification_stalled'
 
-export type OutboxRecordType = 'incident' | 'decision' | 'approval' | 'response' | 'recovery'
+export type OutboxRecordType =
+  | 'incident'
+  | 'decision'
+  | 'approval'
+  | 'response'
+  | 'recovery'
+  | 'policy'
 
 export type OutboxStatus = 'pending' | 'confirmed' | 'failed'
 
@@ -345,4 +351,30 @@ export interface AlertBatchResponse {
   source: string
   outcomes: AlertOutcome[]
   incident_ids: string[]
+}
+
+// --- app/api/policy.py: PolicyView ---
+export type PolicyAnchorState = 'not_queued' | 'pending' | 'confirmed' | 'failed'
+
+export interface PolicyAnchorView {
+  state: PolicyAnchorState
+  chain_tx_id: string | null
+  last_error: string | null
+}
+
+export interface PolicyRuleView {
+  id: string
+  when: Record<string, unknown>
+  requires_human_approval: boolean
+  rationale: string
+}
+
+export interface PolicyView {
+  name: string
+  version: number
+  policy_hash: string
+  source: string
+  safety_floor: string[]
+  rules: PolicyRuleView[]
+  anchor: PolicyAnchorView
 }

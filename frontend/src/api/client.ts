@@ -27,6 +27,7 @@ import type {
   OutboxStatus,
   PatientState,
   PolicyDecision,
+  PolicyView,
   ProposeResponseRequest,
   RecoveryResult,
   RiskAssessmentRequest,
@@ -196,3 +197,7 @@ export const ingestAlerts = (body: AlertBatchRequest): Promise<AlertBatchRespons
 export const getDemoStatus = (): Promise<DemoStatus> => request('/demo/status')
 
 export const resetDemo = (): Promise<DemoResetResult> => request('/demo/reset', { method: 'POST' })
+
+// --- /policy ---
+
+export const getPolicy = (): Promise<PolicyView> => request('/policy')

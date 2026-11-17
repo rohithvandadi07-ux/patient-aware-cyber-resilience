@@ -7,6 +7,7 @@ import { Fleet } from './routes/Fleet'
 import { IncidentDetail } from './routes/IncidentDetail'
 import { IncidentList } from './routes/IncidentList'
 import { Overview } from './routes/Overview'
+import { Policy } from './routes/Policy'
 import { ThreatMonitor } from './routes/ThreatMonitor'
 
 const queryClient = new QueryClient()
@@ -23,6 +24,7 @@ function App() {
             <Route path="fleet" element={<Fleet />} />
             <Route path="threat-monitor" element={<ThreatMonitor />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="policy" element={<Policy />} />
             <Route path="demo" element={<Demo />} />
           </Route>
         </Routes>

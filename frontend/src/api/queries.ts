@@ -264,3 +264,19 @@ export function useDemoResetMutation() {
 export function useAllProposedResponses() {
   return useQuery({ queryKey: queryKeys.allProposedResponses, queryFn: client.listProposedResponses })
 }
+
+export function usePolicy() {
+  return useQuery({ queryKey: ['policy'] as const, queryFn: client.getPolicy })
+}
+
+/** Commits every pending outbox entry (the policy anchor is one of them) to the ledger. */
+export function useAnchorPolicyMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: client.processPendingOutboxEntries,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['policy'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.allAuditEntries })
+    },
+  })
+}
